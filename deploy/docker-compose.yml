@@ -1,0 +1,44 @@
+# uBiblio on Mikrus (lucjan266). Data lives in /root/MCPAPPS/ubiblio on the host.
+#
+#   cd /root/MCPAPPS/ubiblio/src && docker compose -f deploy/docker-compose.yml --env-file ../ubiblio.env up -d --build
+#
+# The container listens only on 127.0.0.1:5105; Nginx publishes it on [::]:5005 (deploy/nginx-ubiblio.conf)
+# and the free subdomain ubiblio.byst.re points at that port (HTTPS is added by Mikrus).
+services:
+  ubiblio:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: ubiblio-pl:latest
+    container_name: ubiblio
+    restart: always
+    ports:
+      - "127.0.0.1:5105:8000"
+    mem_limit: 400m                    # Mikrus has no swap
+    environment:
+      - LANGUAGE=PL
+      - DB_LOCATION=./config/sql_app.db
+      - SECRET_KEY_FILE=/app/config/secret_key.txt
+      - SIGNING_KEY_FILE=/app/config/sign_key.txt
+      - VERIFY_KEY_FILE=/app/config/verify_key.txt
+      - USE_REDIS=false
+      - PUID=1000
+      - PGID=1000
+      # Optional, set in ../ubiblio.env (never commit it):
+      - GB_API=${GB_API:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-}
+      # First start only (then remove from ubiblio.env and recreate the container):
+      - CREATE_ADMIN_USER=${CREATE_ADMIN_USER:-false}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    volumes:
+      - /root/MCPAPPS/ubiblio/config:/app/config
+      - /root/MCPAPPS/ubiblio/export:/app/export
+      - /root/MCPAPPS/ubiblio/bookImages:/app/static/bookImages
+      - /root/MCPAPPS/ubiblio/eBooks:/app/static/eBooks
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/favicon.ico', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
