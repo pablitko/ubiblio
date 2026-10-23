@@ -1,0 +1,6 @@
+# MCP server only (not part of the application image). Python 3.11+.
+mcp==2.3.0
+requests==2.32.2
+# tests
+pytest
+responses==0.25.8
