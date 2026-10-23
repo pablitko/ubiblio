@@ -3,7 +3,7 @@
 # Installed as /etc/cron.d/ubiblio-backup (see deploy/ubiblio-backup.cron).
 # Copying the backups off the server (rclone/scp to another machine) is configured separately.
 set -eu
-DATA=/root/MCPAPPS/ubiblio
+DATA=/opt/ubiblio
 DEST=/backup/DB
 STAMP=$(date +%F-%H%M%S)
 mkdir -p "$DEST" && chmod 700 "$DEST"

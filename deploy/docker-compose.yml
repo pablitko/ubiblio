@@ -1,6 +1,6 @@
-# uBiblio on Mikrus (lucjan266). Data lives in /root/MCPAPPS/ubiblio on the host.
+# uBiblio on Mikrus (lucjan266). Data lives in /opt/ubiblio on the host.
 #
-#   cd /root/MCPAPPS/ubiblio/src && docker compose -f deploy/docker-compose.yml --env-file ../ubiblio.env up -d --build
+#   cd /opt/ubiblio/src && docker compose -f deploy/docker-compose.yml --env-file ../ubiblio.env up -d --build
 #
 # The container listens only on 127.0.0.1:5105; Nginx publishes it on [::]:5005 (deploy/nginx-ubiblio.conf)
 # and the free subdomain ubiblio.byst.re points at that port (HTTPS is added by Mikrus).
@@ -33,10 +33,10 @@ services:
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     volumes:
-      - /root/MCPAPPS/ubiblio/config:/app/config
-      - /root/MCPAPPS/ubiblio/export:/app/export
-      - /root/MCPAPPS/ubiblio/bookImages:/app/static/bookImages
-      - /root/MCPAPPS/ubiblio/eBooks:/app/static/eBooks
+      - /opt/ubiblio/config:/app/config
+      - /opt/ubiblio/export:/app/export
+      - /opt/ubiblio/bookImages:/app/static/bookImages
+      - /opt/ubiblio/eBooks:/app/static/eBooks
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/favicon.ico', timeout=5)"]
       interval: 60s
