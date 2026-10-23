@@ -1,16 +1,16 @@
+import io
 import os
 import shutil
 import sqlite3
-import csv
 from os import listdir
 from datetime import datetime
 from fastapi import APIRouter, Depends, Request, UploadFile, status
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, Response
 from fastapi.encoders import jsonable_encoder
 import json
 import aiofiles
 
-from .. import crud, models, schemas
+from .. import crud, csv_books, models, schemas
 from ..database import SessionLocal
 from ..dependencies import (
     get_rate_limiter, templates, CHUNK_SIZE,
@@ -133,42 +133,55 @@ async def export_db(request: Request, user: admin_user):
 @router.get("/exportcsv", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
 async def export_csv(request: Request, user: admin_user):
     try:
-        conn = sqlite3.connect(DB_LOCATION)
-        cur = conn.cursor()
-        bookData = cur.execute("SELECT * FROM books").fetchall()
         date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
-        with open('export/csvBookExport' + date_time + '.csv', 'a') as f:
-            writer = csv.writer(f)
-            writer.writerows(bookData)
-        conn.close()
+        with open('export/csvBookExport' + date_time + '.csv', 'w', encoding='utf-8', newline='') as f:
+            csv_books.export_csv(f, DB_LOCATION)
         return RedirectResponse(url='/backups')
     except Exception as e:
         print(e)
         return "Database export failed."
 
 
+@router.get("/exportcsv/download", dependencies=[get_rate_limiter(times=1, seconds=10)])
+async def export_csv_download(request: Request, user: admin_user):
+    #Same as /exportcsv, but sends the file straight to the browser instead of saving it in export/
+    buffer = io.StringIO(newline='')
+    csv_books.export_csv(buffer, DB_LOCATION)
+    filename = 'csvBookExport' + datetime.now().strftime("%m_%d_%Y_%H_%M_%S") + '.csv'
+    return Response(
+        buffer.getvalue().encode('utf-8'),
+        media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
+
+
+def render_backups_page(request: Request, user, importReport=None):
+    possibleBackups = listdir('export')
+    backups = []
+    bookExports = []
+    fileExports = []
+    for i in possibleBackups:
+        if i.endswith('.sql'):
+            backups.append(i)
+        elif i.endswith('.csv'):
+            bookExports.append(i)
+        elif i.endswith('.zip'):
+            fileExports.append(i)
+    context = {
+        "request": request,
+        "user": user,
+        "backups": backups,
+        "bookExports": bookExports,
+        "fileExports": fileExports,
+        "importReport": importReport,
+    }
+    return templates.TemplateResponse(request, "backups.html", context)
+
+
 @router.get("/backups", dependencies=[get_rate_limiter(times=1, seconds=3)], response_class=HTMLResponse)
 async def backups_page(request: Request, user: admin_user):
     try:
-        possibleBackups = listdir('export')
-        backups = []
-        bookExports = []
-        fileExports = []
-        for i in possibleBackups:
-            if i.endswith('.sql'):
-                backups.append(i)
-            elif i.endswith('.csv'):
-                bookExports.append(i)
-            elif i.endswith('.zip'):
-                fileExports.append(i)
-        context = {
-            "request": request,
-            "user": user,
-            "backups": backups,
-            "bookExports": bookExports,
-            "fileExports": fileExports,
-        }
-        return templates.TemplateResponse(request, "backups.html", context)
+        return render_backups_page(request, user)
     except Exception as e:
         print(e)
         return "Could not list database backups."
@@ -202,8 +215,8 @@ async def add_csv(filename, request: Request, user: admin_user):
     try:
         path = 'export/' + filename
         if os.path.isfile(path):
-            crud.addCSV(path)
-            return RedirectResponse(url='/searchbooks')
+            report = crud.addCSV(path)
+            return render_backups_page(request, user, importReport=report)
     except Exception as e:
         print(e)
         return "Error adding books -- check the search page to see what was added."

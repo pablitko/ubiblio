@@ -2,11 +2,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from sqlalchemy.sql import func
 from passlib.handlers.sha2_crypt import sha512_crypt as crypto
-from . import models, schemas
+from . import models, schemas, csv_books
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import sqlite3
-import csv
 from .vars import *
 from os import remove, path
 import uuid
@@ -293,16 +292,8 @@ def wipeAndRestore(filename):
     return
     
 def addCSV(filename):
-    with open(filename,'r') as booksCSV: 
-        books = csv.DictReader(booksCSV, fieldnames=['id','title','author','summary','genre','library','shelf','collection','ISBN','notes','owned','withdrawn']) 
-        addBooks = [(i['title'], i['author'], i['summary'], i['genre'], i['library'], i['shelf'], i['collection'], i['ISBN'], i['notes'], i['owned'], i['withdrawn']) for i in books]
-        print(type(addBooks))
-    conn = sqlite3.connect(DB_LOCATION)
-    cur = conn.cursor()
-    cur.executemany("INSERT INTO books (title, author, summary, genre, library, shelf, collection, ISBN, notes, owned, withdrawn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", addBooks)
-    conn.commit()
-    conn.close() 
-    return
+    #Accepts files with a header row (mapped by column name) and old headerless exports. Duplicates are skipped; returns an ImportReport.
+    return csv_books.import_csv(filename, DB_LOCATION)
 
 def checkDB():
     conn = sqlite3.connect(DB_LOCATION)

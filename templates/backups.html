@@ -5,6 +5,23 @@
 <div class="inner" style = "padding: 20px 0 5em 5em;">
 <div style="display:block; clear:both; float:none;">
 <h3><strong><u>Backup Management</strong></u></h3>
+{% if importReport %}
+	<div id="importReport">
+	<h4>CSV import</h4>
+	<p>Added: <strong>{{ importReport.added }}</strong> | Skipped (duplicates): <strong>{{ importReport.skipped|length }}</strong> | Errors: <strong>{{ importReport.errors|length }}</strong></p>
+	{% if importReport.ignored_columns %}<p>Ignored columns: {{ importReport.ignored_columns|join(", ") }}</p>{% endif %}
+	{% if importReport.skipped or importReport.errors %}
+	<table>
+		<thead><tr><th>Row</th><th>Result</th></tr></thead>
+		<tbody>
+		{% for row, reason in importReport.errors %}<tr><td>{{ row }}</td><td>Error: {{ reason }}</td></tr>{% endfor %}
+		{% for row, reason in importReport.skipped %}<tr><td>{{ row }}</td><td>Skipped: {{ reason }}</td></tr>{% endfor %}
+		</tbody>
+	</table>
+	{% endif %}
+	</div>
+<hr>
+{% endif %}
 
 	<a style="border:none; margin-right:25px;margin-right:25px;" href="/export"><button>Backup Now</button></a>
 <hr>
@@ -56,6 +73,7 @@
 	<h3><strong><u>Book List Exports</u></strong></h3>
 	<p>These are lists of books only -- for example if you want to move a bunch of books from one uBiblio library to another. Or if you just want a CSV file of your books that you can open with other appliations.</p>
 	<a style="border:none; margin-right:25px;margin-right:25px;" href="/exportcsv"><button>Create CSV</button></a>
+	<a style="border:none; margin-right:25px;margin-right:25px;" href="/exportcsv/download"><button>Download CSV</button></a>
 	
 	<p><br>Restoring from one of these files will <strong>NOT</strong> wipe the current database first. It will add all the books from the file to the current database. Generally it is a good idea to backup the database before attempting this.</p>
 <table>
