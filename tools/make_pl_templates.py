@@ -101,6 +101,16 @@ T = {
     "Photo": "Zdjęcie", "Confidence": "Pewność", "saved": "zapisana", "possible duplicate:": "możliwy duplikat:",
     "Save selected": "Zapisz zaznaczone", "No books were read from the photos.": "Ze zdjęć nie odczytano żadnej książki.",
     "New photo import": "Nowy import ze zdjęć",
+    # API tokens
+    "API Tokens": "Tokeny API",
+    "Tokens give scripts and AI assistants (through the MCP server) access to the JSON API at":
+        "Tokeny dają skryptom i asystentom AI (przez serwer MCP) dostęp do API JSON pod adresem",
+    ". A read token can only search and view books; a write token can also add books, change their location and notes, and mark them as verified. No token can delete anything.":
+        ". Token do odczytu pozwala tylko wyszukiwać i przeglądać książki; token do zapisu pozwala też dodawać książki, zmieniać ich położenie i notatki oraz oznaczać je jako sprawdzone. Żaden token nie może niczego usunąć.",
+    "New token:": "Nowy token:", "Copy it now. It is not stored and will not be shown again.": "Skopiuj go teraz. Nie jest nigdzie zapisany i nie zostanie pokazany ponownie.",
+    "Name": "Nazwa", "Access": "Dostęp", "Create token": "Utwórz token", "Created": "Utworzony", "Last used": "Ostatnio użyty",
+    "read": "odczyt", "write": "zapis", "Status": "Stan", "revoked": "unieważniony", "active": "aktywny", "Revoke": "Unieważnij", "No tokens yet.": "Nie ma jeszcze tokenów.",
+    "The token will stop working immediately. Are you sure?": "Token natychmiast przestanie działać. Na pewno?",
     # Backups
     "Backup Management": "Kopie zapasowe", "Backup Now": "Zrób kopię teraz", "Restore from Backup": "Przywracanie z kopii",
     "Restoring from one of the files below will wipe the database completely and re-load it from the file. You":
@@ -164,7 +174,7 @@ T = {
 }
 
 # Texts that stay as they are (names, identifiers, Jinja fragments)
-KEEP = {"uBiblio", "Sean Boyce", "HTML5 UP", "GEMINI_API_KEY", "GEMINI_MODEL", "{% if c.confidence"}
+KEEP = {"/api/v1", "uBiblio", "Sean Boyce", "HTML5 UP", "GEMINI_API_KEY", "GEMINI_MODEL", "{% if c.confidence"}
 
 # Strings inside <script> blocks: (file or "*", English, Polish)
 SCRIPT = [

@@ -76,6 +76,18 @@ class link(Base):
     accessCode = Column(String, index=True)
     validity = Column(DateTime(timezone=True), server_default=func.now())
     
+class apiToken(Base):
+    #Bearer tokens for /api/v1. Only the SHA-256 of the token is stored; the token itself is shown once.
+    __tablename__ = "apiTokens"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    tokenHash = Column(String, unique=True, index=True, nullable=False)
+    scope = Column(String, nullable=False, default="read")
+    userId = Column(Integer, ForeignKey("users.id"))
+    createdAt = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    lastUsedAt = Column(DateTime, nullable=True)
+    revokedAt = Column(DateTime, nullable=True)
+
 class vkey(Base):
     __tablename__ = "vkeys"
     id = Column(Integer, primary_key=True)

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>API Tokens</h1>
+    {% for error in errors %}
+    <p style="color: red">{{ error }}</p>
+    {% endfor %}
+    <p>Tokens give scripts and AI assistants (through the MCP server) access to the JSON API at <code>/api/v1</code>. A read token can only search and view books; a write token can also add books, change their location and notes, and mark them as verified. No token can delete anything.</p>
+    {% if newToken %}
+    <div id="newToken" style="border-left: 4px solid green; padding-left: 10px;">
+      <p><strong>New token:</strong> {{ newToken.name }} ({{ newToken.scope }})</p>
+      <p><code style="user-select: all; word-break: break-all;">{{ newToken.token }}</code></p>
+      <p>Copy it now. It is not stored and will not be shown again.</p>
+    </div>
+    {% endif %}
+    <form action="/api_tokens" method="post">
+      <p><label for="name">Name</label><input type="text" id="name" name="name" maxlength="100" required></p>
+      <p><label for="scope">Access</label>
+      <select id="scope" name="scope">
+        <option value="read" selected>read</option>
+        <option value="write">write</option>
+      </select></p>
+      <input type="submit" value="Create token">
+    </form>
+    <hr />
+    {% if tokens %}
+    <table>
+      <thead><tr><th>Name</th><th>Access</th><th>Created</th><th>Last used</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for t in tokens %}
+      <tr>
+        <td>{{ t.name }}</td><td>{{ t.scope }}</td>
+        <td>{{ t.createdAt.strftime("%Y-%m-%d %H:%M") if t.createdAt else "" }}</td>
+        <td>{{ t.lastUsedAt.strftime("%Y-%m-%d %H:%M") if t.lastUsedAt else "" }}</td>
+        {% if t.revokedAt %}
+        <td>revoked</td><td></td>
+        {% else %}
+        <td>active</td>
+        <td><form action="/api_tokens/{{ t.id }}/revoke" method="post" style="margin:0"><input type="submit" value="Revoke" onclick="if (!confirm('The token will stop working immediately. Are you sure?')) return false;"></form></td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No tokens yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

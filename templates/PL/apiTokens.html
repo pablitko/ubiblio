@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>Tokeny API</h1>
+    {% for error in errors %}
+    <p style="color: red">{{ error }}</p>
+    {% endfor %}
+    <p>Tokeny dają skryptom i asystentom AI (przez serwer MCP) dostęp do API JSON pod adresem <code>/api/v1</code>. Token do odczytu pozwala tylko wyszukiwać i przeglądać książki; token do zapisu pozwala też dodawać książki, zmieniać ich położenie i notatki oraz oznaczać je jako sprawdzone. Żaden token nie może niczego usunąć.</p>
+    {% if newToken %}
+    <div id="newToken" style="border-left: 4px solid green; padding-left: 10px;">
+      <p><strong>Nowy token:</strong> {{ newToken.name }} ({{ newToken.scope }})</p>
+      <p><code style="user-select: all; word-break: break-all;">{{ newToken.token }}</code></p>
+      <p>Skopiuj go teraz. Nie jest nigdzie zapisany i nie zostanie pokazany ponownie.</p>
+    </div>
+    {% endif %}
+    <form action="/api_tokens" method="post">
+      <p><label for="name">Nazwa</label><input type="text" id="name" name="name" maxlength="100" required></p>
+      <p><label for="scope">Dostęp</label>
+      <select id="scope" name="scope">
+        <option value="read" selected>odczyt</option>
+        <option value="write">zapis</option>
+      </select></p>
+      <input type="submit" value="Utwórz token">
+    </form>
+    <hr />
+    {% if tokens %}
+    <table>
+      <thead><tr><th>Nazwa</th><th>Dostęp</th><th>Utworzony</th><th>Ostatnio użyty</th><th>Stan</th><th>Akcje</th></tr></thead>
+      <tbody>
+      {% for t in tokens %}
+      <tr>
+        <td>{{ t.name }}</td><td>{{ t.scope }}</td>
+        <td>{{ t.createdAt.strftime("%Y-%m-%d %H:%M") if t.createdAt else "" }}</td>
+        <td>{{ t.lastUsedAt.strftime("%Y-%m-%d %H:%M") if t.lastUsedAt else "" }}</td>
+        {% if t.revokedAt %}
+        <td>unieważniony</td><td></td>
+        {% else %}
+        <td>aktywny</td>
+        <td><form action="/api_tokens/{{ t.id }}/revoke" method="post" style="margin:0"><input type="submit" value="Unieważnij" onclick="if (!confirm('Token natychmiast przestanie działać. Na pewno?')) return false;"></form></td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>Nie ma jeszcze tokenów.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

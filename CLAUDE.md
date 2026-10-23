@@ -66,3 +66,6 @@ Only `title` is required. `owned` defaults to 1, `withdrawn` and `ebook` to 0. B
 - `LANGUAGE=PL` selects `templates/PL`, which is **generated**: edit the English template, then run `python tools/make_pl_templates.py` (it lists strings missing from its dictionary; `tests/test_polish.py` fails when PL is out of date). Never edit `templates/PL` by hand. `templates/FR` is still maintained by hand.
 - Messages returned from Python go through `ubiblio.messages._("English text", **values)`; add the Polish text to `messages.PL`.
 - Search uses `ub_norm()` (registered on every SQLite connection in `database.py`, `ubiblio/text.py`): case- and diacritic-insensitive, `ł`->`l`, sorted by the normalized text.
+
+## JSON API and MCP
+- `/api/v1` (`routers/api_v1.py`): Bearer tokens from `/api_tokens` (admin page). Tokens are `ubt_...`, stored as SHA-256 only (`api_tokens.py`), scopes `read`/`write` (write includes read). Cookies are not accepted there. No delete/restore/backup/user endpoints – keep it that way. Calls are logged by token name (`ubiblio.api` logger), never by token value. Rate limit `API_RATE_LIMIT_PER_MIN` (in memory, per token).

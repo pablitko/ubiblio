@@ -48,6 +48,7 @@ PL = {
     "Could not delete verification key.": "Nie udało się usunąć klucza weryfikacyjnego.",
     "Not a valid jpg image": "To nie jest prawidłowy obraz JPG",
     "ISBN {isbn} not found -- try another.": "Nie znaleziono ISBN {isbn}, spróbuj innego.",
+    "Give the token a name and choose read or write.": "Podaj nazwę tokenu i wybierz odczyt albo zapis.",
     # CSV import report
     "missing title": "brak tytułu",
     "duplicate: {title}": "duplikat: {title}",

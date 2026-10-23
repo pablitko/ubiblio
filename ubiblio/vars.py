@@ -21,6 +21,9 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "")
 PHOTO_IMPORT_MAX_IMAGES = int(os.environ.get("PHOTO_IMPORT_MAX_IMAGES", "20"))
 PHOTO_IMPORT_MAX_MB = float(os.environ.get("PHOTO_IMPORT_MAX_MB", "15"))
 PHOTO_IMPORT_DELAY_S = float(os.environ.get("PHOTO_IMPORT_DELAY_S", "4"))
+
+# JSON API (/api/v1): requests per minute per token
+API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "120"))
 TOKEN_TTL = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "120"))
 
 CREATE_ADMIN_USER = os.environ.get("CREATE_ADMIN_USER", "false").lower() == "true"

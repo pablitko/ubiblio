@@ -10,7 +10,7 @@ from fastapi.encoders import jsonable_encoder
 import json
 import aiofiles
 
-from .. import crud, csv_books, models, schemas
+from .. import api_tokens, crud, csv_books, models, schemas
 from ..database import SessionLocal
 from ..dependencies import (
     get_rate_limiter, templates, CHUNK_SIZE,
@@ -445,3 +445,47 @@ async def stats_get(request: Request, user: admin_user):
         return _("Fail")
     finally:
         db.close()
+
+
+# --------------------------------------------------------------------------
+# API tokens for /api/v1 and the MCP server
+# --------------------------------------------------------------------------
+def render_api_tokens(request: Request, user, newToken=None, errors=None):
+    db = SessionLocal()
+    try:
+        tokens = api_tokens.list_tokens(db)
+    finally:
+        db.close()
+    context = {"request": request, "user": user, "tokens": tokens, "newToken": newToken, "errors": errors or []}
+    return templates.TemplateResponse(request, "apiTokens.html", context)
+
+
+@router.get("/api_tokens", dependencies=[get_rate_limiter(times=3, seconds=2)], response_class=HTMLResponse)
+def api_tokens_page(request: Request, user: admin_user):
+    return render_api_tokens(request, user)
+
+
+@router.post("/api_tokens", dependencies=[get_rate_limiter(times=1, seconds=2)], response_class=HTMLResponse)
+async def api_tokens_create(request: Request, user: admin_user):
+    form = await request.form()
+    name = str(form.get("name") or "").strip()[:100]
+    scope = str(form.get("scope") or "read")
+    if not name or scope not in api_tokens.SCOPES:
+        return render_api_tokens(request, user, errors=[_("Give the token a name and choose read or write.")])
+    db = SessionLocal()
+    try:
+        row, token = api_tokens.create_token(db, name, scope, user.id)
+    finally:
+        db.close()
+    #The token is shown on this page only; it is not stored and cannot be shown again
+    return render_api_tokens(request, user, newToken={"name": row.name, "scope": row.scope, "token": token})
+
+
+@router.post("/api_tokens/{token_id}/revoke", dependencies=[get_rate_limiter(times=1, seconds=1)])
+def api_tokens_revoke(token_id: int, user: admin_user):
+    db = SessionLocal()
+    try:
+        api_tokens.revoke_token(db, token_id)
+    finally:
+        db.close()
+    return RedirectResponse(url="/api_tokens", status_code=status.HTTP_303_SEE_OTHER)

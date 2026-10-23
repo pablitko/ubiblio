@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI, Request, Response, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +11,7 @@ from .database import engine
 from .dependencies import templates
 from .vars import USE_REDIS, REDIS_URL
 
-from .routers import auth, books, reading_lists, files, admin, federation, imports
+from .routers import auth, books, reading_lists, files, admin, federation, imports, api_v1
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -37,6 +39,22 @@ async def head_as_get(request: Request, call_next):
     )
 
 
+api_log = logging.getLogger("ubiblio.api")
+api_log.setLevel(logging.INFO)
+if not api_log.handlers:
+    api_log.addHandler(logging.StreamHandler())
+
+
+@app.middleware("http")
+async def log_api_calls(request: Request, call_next):
+    #One line per /api/v1 call: token name (never the token), method, path, status
+    response = await call_next(request)
+    if request.url.path.startswith("/api/v1/"):
+        api_log.info("api token=%s %s %s -> %s", getattr(request.state, "api_token_name", "-"),
+                     request.method, request.url.path, response.status_code)
+    return response
+
+
 @app.on_event("startup")
 async def startup():
     if USE_REDIS:
@@ -54,3 +72,4 @@ app.include_router(reading_lists.router)
 app.include_router(files.router)
 app.include_router(federation.router)
 app.include_router(imports.router)
+app.include_router(api_v1.router)
