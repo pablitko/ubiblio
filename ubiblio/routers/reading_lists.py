@@ -58,6 +58,7 @@ async def book_return(bookId, request: Request, user: current_user):
             genre=book.genre, library=book.library, shelf=book.shelf, collection=book.collection,
             notes=book.notes, ISBN=book.ISBN, owned=book.owned, ebook=book.ebook,
             customField1=book.customField1, customField2=book.customField2, withdrawn=False,
+            withdrawnBy=None,
         )
         crud.bookReturn(db, book)
     finally:

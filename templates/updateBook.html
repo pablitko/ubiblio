@@ -81,6 +81,22 @@
         <input type="text" name="ISBN" value="{{ book.ISBN }}" >
     </p>
     <p>
+        <p><label for="">Publisher</label></p>
+        <input type="text" name="publisher" value="{{ book.publisher if book.publisher is not none else '' }}" >
+    </p>
+    <p>
+        <p><label for="">Year published</label></p>
+        <input type="number" name="publishedYear" value="{{ book.publishedYear if book.publishedYear is not none else '' }}" >
+    </p>
+    <p>
+        <p><label for="">Pages</label></p>
+        <input type="number" name="pages" value="{{ book.pages if book.pages is not none else '' }}" >
+    </p>
+    <p>
+        <p><label for="">Language</label></p>
+        <input type="text" name="language" value="{{ book.language if book.language is not none else '' }}" >
+    </p>
+    <p>
         <p><label for="">Notes</label></p>
         <input type="text" name="notes" value="{{ book.notes }}" >
     </p>

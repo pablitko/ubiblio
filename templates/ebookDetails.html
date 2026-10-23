@@ -20,6 +20,12 @@
     <div style="width:30%; min-width: 280px; float:left;">
         <p><strong>Collection</strong>:  {{ book.collection}}</p>
         <p><strong>ISBN</strong>:  {{ book.ISBN}}</p>
+		<p><strong>Publisher</strong>:  {{ book.publisher or '' }}</p>
+		<p><strong>Year published</strong>:  {{ book.publishedYear or '' }}</p>
+		<p><strong>Pages</strong>:  {{ book.pages or '' }}</p>
+		<p><strong>Language</strong>:  {{ book.language or '' }}</p>
+		<p><strong>Date added</strong>:  {{ book.dateAdded.strftime('%Y-%m-%d') if book.dateAdded else '' }}</p>
+		<p><strong>Last verified</strong>:  {{ book.lastVerified.strftime('%Y-%m-%d') if book.lastVerified else '' }}</p>
 		<p><strong>Notes</strong>:  {{book.notes}}</p>
 		<p><strong>Owned</strong>:  {{ book.owned}}</p>
 			{% if config.customFieldName1|length > 0 %}	

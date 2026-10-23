@@ -2,6 +2,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 from .database import Base
 from sqlalchemy.sql import func
+from datetime import datetime, timezone
 
 class User(Base):
     __tablename__ = "users"
@@ -28,6 +29,13 @@ class Book(Base):
     customField1 = Column(String, nullable=True)
     customField2 = Column(String, nullable=True)
     ebook = Column(Boolean,nullable=True, default=False)
+    # Added in DB version 1.1.0. Dates are naive UTC (SQLite CURRENT_TIMESTAMP is UTC too).
+    dateAdded = Column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), server_default=func.now())
+    lastVerified = Column(DateTime, nullable=True)
+    publisher = Column(String, nullable=True)
+    publishedYear = Column(Integer, nullable=True)
+    pages = Column(Integer, nullable=True)
+    language = Column(String, nullable=True)
 
 class readingListItems(Base):
     __tablename__ = "readinglistitems"

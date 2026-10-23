@@ -91,6 +91,10 @@ class bookForm:
         self.ebook: Optional[bool] = None
         self.customField1: Optional[str] = None
         self.customField2: Optional[str] = None
+        self.publisher: Optional[str] = None
+        self.publishedYear: Optional[int] = None
+        self.pages: Optional[int] = None
+        self.language: Optional[str] = None
 
     async def load_data(self):
         form = await self.request.form()
@@ -108,6 +112,17 @@ class bookForm:
         self.ebook = form.get("ebook")
         self.customField1 = form.get("customField1")
         self.customField2 = form.get("customField2")
+        self.publisher = form.get("publisher") or None
+        self.language = form.get("language") or None
+        for name in ("publishedYear", "pages"):
+            value = (form.get(name) or "").strip()
+            if not value:
+                setattr(self, name, None)
+            elif value.isdigit():
+                setattr(self, name, int(value))
+            else:
+                setattr(self, name, None)
+                self.errors.append(f"{name} must be a whole number.")
 
     async def is_valid(self):
         if not self.title:

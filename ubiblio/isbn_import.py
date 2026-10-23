@@ -123,6 +123,10 @@ def add_book_by_isbn(db: Session, raw: str, known: dict, lookup, library="", she
         owned=True,
         withdrawn=False,
         ebook=False,
+        publisher=metadata.get("Publisher") or None,
+        publishedYear=metadata.get("Year"),
+        pages=metadata.get("Pages"),
+        language=metadata.get("Language") or None,
     )
     if crud.createBook(db, new_book) != "True":
         result.update(status="error", error="could not save the book")

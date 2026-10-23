@@ -54,3 +54,10 @@ Only `title` is required. `owned` defaults to 1, `withdrawn` and `ebook` to 0. B
 - Bulk import (`/import_isbn`, `ubiblio/isbn_import.py`): background job, state in process memory (`JOBS`) – run a single worker. `METADATA_DELAY_S` (default 1.0) between lookups. Unknown books are saved as `ISBN <n>` with note `do-uzupelnienia` and listed at `/to_complete`.
 - Continuous scanning: `templates/scanIsbn.html` posts each barcode to `POST /api/scan_add` (JSON, admin) without reloading; same code ignored for 3 s, EAN-13/ISBN checksum checked in the browser. The old confirm-each-book flow is the "Confirm each book" mode. The camera needs HTTPS (except on localhost).
 - Shelf photos: `/import_photos`, `ubiblio/photo_import.py`, `routers/books/vision_client.py` (Gemini Interactions API over REST). Needs `GEMINI_API_KEY` + `GEMINI_MODEL`. The key goes only in the `x-goog-api-key` header – never in URLs, logs or error messages. Nothing is saved without approval; saved books get note `z-zdjecia, do-weryfikacji`. The fixture `tests/fixtures/gemini/shelf_ok.json` follows the documented response shape, not a recorded call.
+
+## Database versions
+- Current: `crud.CURRENT_DB_VERSION` ("1.1.0"). `crud.updateDBVersion` runs the steps in order (1.0.0 -> 1.0.1 -> 1.1.0); steps must be idempotent (check `PRAGMA table_info` before `ALTER TABLE`). `/updateDBVersion` writes `export/preUpdateExport*.sql` first.
+- `tests/fixtures/db_1_0_1.sql` is a dump made by the upstream 1.0.1 code; every migration test starts from it.
+- 1.1.0 added `dateAdded` (naive UTC), `lastVerified`, `publisher`, `publishedYear`, `pages`, `language` to `books`.
+- `crud.updateBook`/`bookReturn`/`bookWithdraw` change only fields set explicitly on the schema (`exclude_unset`), so a form that does not send a field keeps it. To clear a field, pass `None` explicitly.
+- SQL dumps and restores are UTF-8 (they used the platform default before, which broke Polish characters on Windows).

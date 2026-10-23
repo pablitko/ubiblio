@@ -27,7 +27,8 @@ class TestBnByIsbn:
         book, status = BookMetadataClient().bn_by_isbn("9788377792094")
 
         assert status == 200
-        assert book == {"Title": "Lalka", "Author": "Bolesław Prus", "Summary": ""}
+        assert book == {"Title": "Lalka", "Author": "Bolesław Prus", "Summary": "",
+                        "Publisher": "Wydawnictwo MG", "Year": 2015, "Language": "pol"}
         assert len(responses.calls) == 1
         assert responses.calls[0].request.headers["User-Agent"] == BookMetadataClient.USER_AGENT
 
@@ -41,6 +42,7 @@ class TestBnByIsbn:
         assert status == 200
         assert book["Title"] == "Solaris"
         assert book["Author"] == "Stanisław Lem"
+        assert (book["Publisher"], book["Year"], book["Pages"]) == ("Wydaw. Literackie", 1994, 208)
         assert len(responses.calls) == 2
 
     @responses.activate

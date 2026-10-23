@@ -44,7 +44,8 @@ def isAdmin(db: Session, username: str):
 
 def createBook(db: Session, book: schemas.Book):
     try:
-        book = models.Book(** book.model_dump())
+        #exclude_none lets column defaults (e.g. dateAdded) apply
+        book = models.Book(** book.model_dump(exclude_none=True))
         db.add(book)
         db.commit()
         db.refresh(book)
@@ -77,8 +78,9 @@ def updateBook(db: Session, book: schemas.Book):
     try:
         item = db.get(models.Book, book.id) 
         if item:
-            book = models.Book(** book.model_dump())
-            db.merge(book)
+            #Only fields that were set explicitly are changed; e.g. dateAdded and withdrawnBy survive a form edit
+            for key, value in book.model_dump(exclude_unset=True).items():
+                setattr(item, key, value)
             db.commit()   
         if not item:
             print("updated item does not exist")
@@ -246,8 +248,9 @@ def bookReturn(db: Session, book: schemas.Book):
     try:  
         item = db.get(models.Book, book.id)  
         if item:
-            book = models.Book(** book.model_dump())
-            db.merge(book)
+            #Only fields that were set explicitly are changed; e.g. dateAdded and withdrawnBy survive a form edit
+            for key, value in book.model_dump(exclude_unset=True).items():
+                setattr(item, key, value)
             db.commit()   
         if not item:
             print("updated item does not exist")
@@ -260,8 +263,9 @@ def bookWithdraw(db: Session, book: schemas.Book):
     try:
         item = db.get(models.Book, book.id)  
         if item:
-            book = models.Book(** book.model_dump())
-            db.merge(book)
+            #Only fields that were set explicitly are changed; e.g. dateAdded and withdrawnBy survive a form edit
+            for key, value in book.model_dump(exclude_unset=True).items():
+                setattr(item, key, value)
             db.commit()   
         if not item:
             print("updated item does not exist")
@@ -283,7 +287,7 @@ def wipeAndRestore(filename):
     cursor = conn.execute("DROP TABLE IF EXISTS 'vkeys';")
     cursor.close()
     conn.commit()
-    f = open(filename,'r')
+    f = open(filename,'r', encoding='utf-8')
     sql = f.read() # watch out for built-in `str`
     cursor = conn.executescript(sql)
     cursor.close()
@@ -321,7 +325,20 @@ def updateDB():
     conn.close()
     return
 
+CURRENT_DB_VERSION = "1.1.0"
+
+#Columns added to books in 1.1.0. SQLite cannot ADD COLUMN with a non-constant default, so dateAdded is filled in afterwards.
+BOOK_COLUMNS_1_1_0 = [
+    ("dateAdded", "DATETIME"),
+    ("lastVerified", "DATETIME"),
+    ("publisher", "VARCHAR"),
+    ("publishedYear", "INTEGER"),
+    ("pages", "INTEGER"),
+    ("language", "VARCHAR"),
+]
+
 def updateDBVersion(db: Session, version):
+    #Each step migrates one version to the next, so an old database goes through all of them in order.
     if version == "1.0.0":
         conn = sqlite3.connect(DB_LOCATION)
         #Version 1.0.0->1.0.1: We add a genres field to config, which contains the default list of genres, so users can change it. Previously it was hardcoded. 
@@ -330,6 +347,21 @@ def updateDBVersion(db: Session, version):
         cursor = conn.execute('UPDATE config SET version = ? where id = 1;',("1.0.1",))
         conn.commit()
         conn.close()
+        version = "1.0.1"
+    if version == "1.0.1":
+        #Version 1.0.1->1.1.0: inventory fields (date added, last verified) and more metadata (publisher, year, pages, language).
+        conn = sqlite3.connect(DB_LOCATION)
+        try:
+            existing = {row[1] for row in conn.execute("PRAGMA table_info('books');")}
+            for name, sqlType in BOOK_COLUMNS_1_1_0:
+                if name not in existing:
+                    conn.execute(f'ALTER TABLE books ADD COLUMN {name} {sqlType};')
+            conn.execute('UPDATE books SET dateAdded = CURRENT_TIMESTAMP WHERE dateAdded IS NULL;')
+            conn.execute('UPDATE config SET version = ?;', ("1.1.0",))
+            conn.commit()
+        finally:
+            conn.close()
+        version = "1.1.0"
     return
 
  
@@ -374,7 +406,8 @@ def initConfig(db: Session):
         config = db.query(models.config).first()
         if not config:    
             conn = sqlite3.connect(DB_LOCATION)
-            initData =["1.0.1",False,"","",",".join(schemas.DEFAULT_GENRES)]
+            #A new database is created by SQLAlchemy with the current schema, so it starts at the current version
+            initData =[CURRENT_DB_VERSION,False,"","",",".join(schemas.DEFAULT_GENRES)]
             cursor = conn.execute('create table if not exists Config (id INTEGER PRIMARY KEY, version VARCHAR, coverImages BOOLEAN, customFieldName1 VARCHAR, customFieldName2 VARCHAR, genres VARCHAR);')
             cursor = conn.execute('INSERT INTO config (version, coverImages, customFieldName1, customFieldName2, genres) VALUES (?, ?, ?, ?, ?);', initData)
             conn.commit()

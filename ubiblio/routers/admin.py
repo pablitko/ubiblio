@@ -40,7 +40,7 @@ def index(request: Request):
         databaseNotFirstVersion = crud.checkDB()
         if databaseNotFirstVersion == True:
             dbVersion = crud.getVersion()
-            if dbVersion == "1.0.1":
+            if dbVersion == crud.CURRENT_DB_VERSION:
                 response = RedirectResponse(url='/searchbooks')
             else:
                 response = RedirectResponse(url='/dbUpdateVersion')
@@ -80,7 +80,7 @@ async def update_db(request: Request, user: admin_user):
     try:
         conn = sqlite3.connect(DB_LOCATION)
         date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
-        with open('export/preUpdateExport' + date_time + '.sql', 'w') as f:
+        with open('export/preUpdateExport' + date_time + '.sql', 'w', encoding='utf-8') as f:
             for line in conn.iterdump():
                 f.write('%s\n' % line)
         conn.close()
@@ -97,7 +97,7 @@ async def update_db_version(request: Request, user: admin_user):
         dbVersion = crud.getVersion()
         conn = sqlite3.connect(DB_LOCATION)
         date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
-        with open('export/preUpdateExport' + date_time + '.sql', 'w') as f:
+        with open('export/preUpdateExport' + date_time + '.sql', 'w', encoding='utf-8') as f:
             for line in conn.iterdump():
                 f.write('%s\n' % line)
         conn.close()
@@ -117,7 +117,7 @@ async def export_db(request: Request, user: admin_user):
     try:
         conn = sqlite3.connect(DB_LOCATION)
         date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
-        with open('export/DBExport' + date_time + '.sql', 'w') as f:
+        with open('export/DBExport' + date_time + '.sql', 'w', encoding='utf-8') as f:
             for line in conn.iterdump():
                 f.write('%s\n' % line)
         conn.close()
@@ -297,7 +297,7 @@ async def update_config(request: Request, user: admin_user):
         await form.load_data()
         if await form.is_valid():
             db = SessionLocal()
-            config = schemas.config(id=1, version=form.version, coverImages=form.coverImages,
+            config = schemas.config(id=1, version=crud.getVersion() or form.version, coverImages=form.coverImages,
                                     customFieldName1=form.customFieldName1, customFieldName2=form.customFieldName2, genres=form.genres)
             crud.updateConfig(db, config)
             config = crud.getConfig(db)

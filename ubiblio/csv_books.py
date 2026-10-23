@@ -6,6 +6,7 @@ a header are read with the legacy layout written by older versions of /exportcsv
 import csv
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from .isbn import comparable_isbn
 
@@ -15,7 +16,10 @@ SPEC_COLUMNS = [
     "ISBN", "notes", "owned", "withdrawn", "ebook", "customField1", "customField2",
 ]
 # withdrawnBy is not in the specification, but exporting without it would lose data.
-EXPORT_COLUMNS = SPEC_COLUMNS + ["withdrawnBy"]
+# Columns from DB version 1.1.0 are appended at the end, so older files still import.
+DATE_COLUMNS = ["dateAdded", "lastVerified"]
+INT_COLUMNS = ["publishedYear", "pages"]
+EXPORT_COLUMNS = SPEC_COLUMNS + ["withdrawnBy"] + DATE_COLUMNS + ["publisher"] + INT_COLUMNS + ["language"]
 IMPORT_COLUMNS = EXPORT_COLUMNS + ["id"]
 
 # Headerless files: `SELECT * FROM books` from older exports. The first 13 columns are
@@ -74,6 +78,29 @@ def parse_bool(value, default):
     raise ValueError(f"invalid boolean value {value!r}")
 
 
+def parse_int(name, value):
+    text = (value or "").strip()
+    if not text:
+        return None
+    if not text.isdigit():
+        raise ValueError(f"{name} must be a whole number, got {value!r}")
+    return int(text)
+
+
+def parse_date(name, value):
+    text = (value or "").strip()
+    if not text:
+        return None
+    try:
+        return str(datetime.fromisoformat(text).replace(tzinfo=None))
+    except ValueError:
+        raise ValueError(f"{name} must be a date like 2026-10-23, got {value!r}") from None
+
+
+def _utcnow():
+    return str(datetime.now(timezone.utc).replace(tzinfo=None))
+
+
 def _is_header(row):
     return any(cell.strip().casefold() == "title" for cell in row)
 
@@ -130,6 +157,9 @@ def import_csv(filename, db_location):
                             name: parse_bool(row.get(name), default)
                             for name, default in BOOL_DEFAULTS.items()
                         }
+                        flags.update({name: parse_int(name, row.get(name)) for name in INT_COLUMNS})
+                        flags.update({name: parse_date(name, row.get(name)) for name in DATE_COLUMNS})
+                        flags["dateAdded"] = flags["dateAdded"] or _utcnow()
                     except ValueError as e:
                         report.errors.append((number, str(e)))
                         continue

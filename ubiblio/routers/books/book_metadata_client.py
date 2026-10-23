@@ -31,6 +31,8 @@ class BookMetadataClient:
             book["Title"] = raw_book["title"]
             book["Author"] = "; ".join(raw_book.get("authors", []))
             book["Summary"] = raw_book.get("description", "")
+            _add_details(book, publisher=raw_book.get("publisher"), year=raw_book.get("publishedDate"),
+                         pages=raw_book.get("pageCount"), language=raw_book.get("language"))
             return book, 200
         return {}, response.status_code
 
@@ -56,6 +58,10 @@ class BookMetadataClient:
             }
             authors = book_details.get("authors", [])
             book["Author"] = "; ".join(a["name"] for a in authors if "name" in a)
+            languages = [l.get("key", "").rsplit("/", 1)[-1] for l in book_details.get("languages", [])]
+            _add_details(book, publisher=", ".join(book_details.get("publishers", [])),
+                         year=book_details.get("publish_date"), pages=book_details.get("number_of_pages"),
+                         language=languages[0] if languages else None)
             return book, 200
         else:
             return {}, response.status_code
@@ -100,6 +106,26 @@ class BookMetadataClient:
         return {}, status
 
 
+def _year(value):
+    match = re.search(r"(?<!\d)(1[5-9]\d\d|20\d\d)(?!\d)", str(value or ""))
+    return int(match.group(1)) if match else None
+
+
+def _add_details(book, publisher=None, year=None, pages=None, language=None):
+    """Add Publisher/Year/Pages/Language to `book`, only for values the source actually has."""
+    if publisher:
+        book["Publisher"] = _strip_isbd(str(publisher))
+    if _year(year):
+        book["Year"] = _year(year)
+    try:
+        if pages and int(pages) > 0:
+            book["Pages"] = int(pages)
+    except (TypeError, ValueError):
+        pass
+    if language:
+        book["Language"] = str(language).strip().lower()
+
+
 def _marc_fields(marc, tag):
     return [field[tag] for field in marc.get("fields", []) if tag in field]
 
@@ -133,4 +159,17 @@ def parse_bn_marc(marc: dict) -> dict[str, str]:
     if not authors and statement:
         authors = [_strip_isbd(statement[0])]
     book["Author"] = "; ".join(authors)
+
+    control = next(iter(_marc_fields(marc, "008")), "")
+    publishers = [b for tag in ("264", "260") for f in _marc_fields(marc, tag) for b in _subfields(f, "b")]
+    extent = [a for f in _marc_fields(marc, "300") for a in _subfields(f, "a")]
+    pages = re.search(r"(\d+)\s*(?:,\s*\[\d+\]\s*)?s\.", extent[0]) if extent else None
+    language = control[35:38].strip() if len(control) >= 38 else ""
+    _add_details(
+        book,
+        publisher=publishers[0] if publishers else None,
+        year=control[7:11] if len(control) >= 11 else None,
+        pages=pages.group(1) if pages else None,
+        language=language if language.isalpha() else None,
+    )
     return book

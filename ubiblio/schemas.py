@@ -42,6 +42,12 @@ class Book(BookBase):
     customField1: Optional[str] = Field(default=None)
     customField2: Optional[str] = Field(default=None)
     ebook: Optional[bool] = Field(default=False)
+    dateAdded: Optional[datetime] = Field(default=None)
+    lastVerified: Optional[datetime] = Field(default=None)
+    publisher: Optional[str] = Field(default=None)
+    publishedYear: Optional[int] = Field(default=None)
+    pages: Optional[int] = Field(default=None)
+    language: Optional[str] = Field(default=None)
                 
 class BookCreate(BookBase):
     author: Optional[str] = Field(default=None)
@@ -58,6 +64,12 @@ class BookCreate(BookBase):
     customField1: Optional[str] = Field(default=None)
     customField2: Optional[str] = Field(default=None)
     ebook: Optional[bool] = Field(default=False)
+    dateAdded: Optional[datetime] = Field(default=None)
+    lastVerified: Optional[datetime] = Field(default=None)
+    publisher: Optional[str] = Field(default=None)
+    publishedYear: Optional[int] = Field(default=None)
+    pages: Optional[int] = Field(default=None)
+    language: Optional[str] = Field(default=None)
 
 class readingListItems(BaseModel):
     id: int

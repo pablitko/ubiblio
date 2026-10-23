@@ -75,6 +75,10 @@ def book_create_from_form(form) -> schemas.BookCreate:
         customField1=form.customField1,
         customField2=form.customField2,
         withdrawn=form.withdrawn,
+        publisher=form.publisher,
+        publishedYear=form.publishedYear,
+        pages=form.pages,
+        language=form.language,
     )
 
 
@@ -95,6 +99,10 @@ def book_update_from_form(book_id, form) -> schemas.Book:
         customField1=form.customField1,
         customField2=form.customField2,
         withdrawn=form.withdrawn,
+        publisher=form.publisher,
+        publishedYear=form.publishedYear,
+        pages=form.pages,
+        language=form.language,
     )
 
 
@@ -153,4 +161,8 @@ def book_create_from_isbn_metadata(book: dict[str, Any], isbn: str) -> schemas.B
         author=book["Author"],
         summary=book["Summary"],
         ISBN=isbn,
+        publisher=book.get("Publisher") or None,
+        publishedYear=book.get("Year"),
+        pages=book.get("Pages"),
+        language=book.get("Language") or None,
     )
