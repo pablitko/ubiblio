@@ -1,0 +1,18 @@
+{
+  "id": "v1_test_interaction",
+  "object": "interaction",
+  "model": "gemini-test-model",
+  "status": "completed",
+  "created": "2026-10-23T10:00:00Z",
+  "updated": "2026-10-23T10:00:04Z",
+  "steps": [
+    {"type": "user_input", "content": [{"type": "text", "text": "..."}]},
+    {
+      "type": "model_output",
+      "content": [
+        {"type": "text", "text": "{\"books\": [{\"title\": \"Lalka\", \"author\": \"Bolesław Prus\", \"confidence\": 0.95}, {\"title\": \"Solaris\", \"author\": \"\", \"confidence\": 0.7}, {\"title\": \"Ferdydurke\", \"author\": \"Witold Gombrowicz\", \"confidence\": 0.4}]}"}
+      ]
+    }
+  ],
+  "usage": {"total_input_tokens": 1290, "total_output_tokens": 80, "total_tokens": 1370}
+}

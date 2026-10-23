@@ -9,12 +9,14 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
 from .isbn import comparable_isbn, normalize_isbn
 
 TO_COMPLETE_NOTE = "do-uzupelnienia"
+TO_VERIFY_NOTE = "do-weryfikacji"
 RESULT_STATUSES = ("added", "not_found", "duplicate", "invalid", "error")
 
 
@@ -167,7 +169,9 @@ def report_csv(job: ImportJob) -> str:
 
 
 def books_to_complete(db: Session):
+    """Books saved without metadata (ISBN import) or read from shelf photos and not yet verified."""
     return (db.query(models.Book)
-            .filter(models.Book.notes.like(f"%{TO_COMPLETE_NOTE}%"))
+            .filter(or_(models.Book.notes.like(f"%{TO_COMPLETE_NOTE}%"),
+                        models.Book.notes.like(f"%{TO_VERIFY_NOTE}%")))
             .order_by(models.Book.id.desc())
             .all())

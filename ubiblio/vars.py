@@ -14,6 +14,13 @@ GOOGLE_BOOKS_API_KEY = os.environ.get("GB_API", "")
 METADATA_SOURCES = [s.strip() for s in os.environ.get("METADATA_SOURCES", "bn,google,openlibrary,wikipedia").split(",") if s.strip()]
 # Pause between lookups during bulk ISBN imports, to stay under external API rate limits.
 METADATA_DELAY_S = float(os.environ.get("METADATA_DELAY_S", "1.0"))
+
+# Shelf photo import (Gemini). Disabled unless both the key and the model name are set.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "")
+PHOTO_IMPORT_MAX_IMAGES = int(os.environ.get("PHOTO_IMPORT_MAX_IMAGES", "20"))
+PHOTO_IMPORT_MAX_MB = float(os.environ.get("PHOTO_IMPORT_MAX_MB", "15"))
+PHOTO_IMPORT_DELAY_S = float(os.environ.get("PHOTO_IMPORT_DELAY_S", "4"))
 TOKEN_TTL = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "120"))
 
 CREATE_ADMIN_USER = os.environ.get("CREATE_ADMIN_USER", "false").lower() == "true"

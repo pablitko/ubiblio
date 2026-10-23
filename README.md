@@ -49,3 +49,13 @@ The HTML theme is modified from "forty" by HTML5UP (https://html5up.net/). Actua
 
 # Reading list / Browse by Genre / Wishlist / Withdrawn Books List
 ![Screenshot of a more detailed list of books](https://raw.githubusercontent.com/seanboyce/ubiblio/refs/heads/dev/ubiblio_readling_list.png)
+
+## Shelf photo import (Gemini) – fork addition
+
+`/import_photos` reads book spines from shelf photos with Google Gemini and lists candidate books; nothing is saved until you approve them.
+
+- Enable with `GEMINI_API_KEY` and `GEMINI_MODEL` (a current model with image input, see ai.google.dev/gemini-api/docs/models). Optional: `PHOTO_IMPORT_MAX_IMAGES` (20), `PHOTO_IMPORT_MAX_MB` (15), `PHOTO_IMPORT_DELAY_S` (4).
+- API used: Gemini **Interactions API**, `POST https://generativelanguage.googleapis.com/v1beta/interactions`, plain REST through `requests` (no SDK), `store: false`, structured output via `response_format`. Checked against the documentation on 2026-10-23.
+- Photos are resized to 1600 px (JPEG) before sending. On the free tier Google may use submitted content to improve its products – photograph spines only.
+- 429/5xx are retried with exponential backoff; when the daily quota is used up the job pauses and can be resumed after midnight Pacific time.
+- Accuracy on real shelves: not measured yet (to do: 3 shelves, new and old editions; record correct/incorrect readings here).

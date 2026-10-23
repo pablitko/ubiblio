@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>Import Books from Shelf Photos</h1>
+    {% for error in errors %}
+    <p style="color: red">{{ error }}</p>
+    {% endfor %}
+    {% if not enabled %}
+    <p><strong>Photo import is disabled.</strong> To enable it, create an API key in Google AI Studio (aistudio.google.com) and start uBiblio with the environment variables <code>GEMINI_API_KEY</code> (the key) and <code>GEMINI_MODEL</code> (a current model with image input, e.g. a Flash or Flash-Lite model from ai.google.dev/gemini-api/docs/models).</p>
+    {% else %}
+    <p style="border-left: 4px solid #b36b00; padding-left: 10px;"><strong>Privacy:</strong> photos are sent to Google Gemini. On the free tier Google may use submitted content to improve its products. Photograph only book spines &ndash; no people, documents or room interiors.</p>
+    <p>Each photo is read separately and gives a list of candidate books. <strong>Nothing is saved until you approve the candidates</strong>; saved books get the note "z-zdjecia, do-weryfikacji" and appear under <a href="/to_complete">Books to complete</a>.</p>
+    <p>Tips: one shelf per photo, camera straight in front of the spines, good light without reflections, 15&ndash;30 spines per photo, spines readable.</p>
+    <form action="/import_photos" method="post" enctype="multipart/form-data">
+      <p><label for="files">Photos (up to {{ maxImages }}, {{ maxMb|round(0)|int }} MB each):</label>
+      <input type="file" id="files" name="files" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple required></p>
+      <p>Applied to every saved book:</p>
+      <p><label for="library">Library</label><input type="text" id="library" name="library"></p>
+      <p><label for="shelf">Shelf</label><input type="text" id="shelf" name="shelf"></p>
+      <p><label for="collection">Collection</label><input type="text" id="collection" name="collection"></p>
+      <input type="submit" value="Read photos">
+    </form>
+    {% endif %}
+    <hr />
+  </div>
+</section>
+{% endblock %}
