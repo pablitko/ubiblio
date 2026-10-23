@@ -12,10 +12,21 @@
     <!-- Scanner UI -->
     <div id="scannerControls">
       <div style="margin-bottom: 10px">
-        <label for="cameraSelect">Caméra: </label>
+        <label for="cameraSelect">Caméra : </label>
         <select id="cameraSelect" style="padding: 5px">
           <option value="">Sélectionner une caméra...</option>
         </select>
+      </div>
+      <div id="modeSelect" style="margin-bottom: 10px">
+        <input type="radio" id="modeContinuous" name="scanMode" value="continuous" checked>
+        <label for="modeContinuous">Continu : enregistrer chaque livre automatiquement</label>
+        <input type="radio" id="modeConfirm" name="scanMode" value="confirm">
+        <label for="modeConfirm">Confirmer chaque livre</label>
+      </div>
+      <div id="locationFields" style="margin-bottom: 10px">
+        <label for="scanLibrary">Bibliothèque</label><input type="text" id="scanLibrary">
+        <label for="scanShelf">Étagère actuelle</label><input type="text" id="scanShelf">
+        <label for="scanCollection">Collection</label><input type="text" id="scanCollection">
       </div>
       <button id="startScanBtn" type="button">Démarrer</button>
       <button id="stopScanBtn" type="button" style="display:none">Arrêter</button>
@@ -27,16 +38,23 @@
       <div id="scannerContainer" style="margin-top:8px; position:relative">
         <div id="interactive" class="viewport" style="width:100%;max-width:420px;display:none"></div>
       </div>
+      <div id="recentScans" style="display:none">
+        <h3>Derniers scans <span id="scanCount"></span></h3>
+        <table>
+          <thead><tr><th>ISBN</th><th>Résultat</th><th>Titre</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </section>
-
 <script src="{{ url_for('static', path='assets/js/quagga.min.js') }}"></script>
+
 <script>
-function saveCamera() {		
+function saveCamera() {
         document.cookie = "cameraIndex=" + (cameraSelect.selectedIndex - 1); //index is off-by-one so we correct here.
   }
-	
+
 function getCookie(name) {
     var dc = document.cookie;
     var prefix = name + "=";
@@ -56,12 +74,142 @@ function getCookie(name) {
     // because unescape has been deprecated, replaced with decodeURI
     //return unescape(dc.substring(begin + prefix.length, end));
     return decodeURI(dc.substring(begin + prefix.length, end));
-} 
+}
 
 
   function isbn() {
     var isbnLink = document.getElementsByName("isbnLink")[0].value;
     if (isbnLink) window.location.href = "/isbn/" + encodeURIComponent(isbnLink)+"/scan";
+  }
+
+  // Messages shown to the user (translated in templates/FR)
+  const TEXT = {
+    added: "ajouté",
+    duplicate: "déjà dans la bibliothèque",
+    not_found: "introuvable, enregistré à compléter",
+    invalid: "ISBN invalide",
+    error: "erreur",
+    saving: "enregistrement...",
+    networkError: "erreur réseau, réessayez",
+    rejected: "Code-barres mal lu ignoré : ",
+    count: " cette session"
+  };
+
+  // Settings remembered in this browser; storage may be unavailable (private mode)
+  function loadSetting(key, fallback) {
+    try { const v = localStorage.getItem("ubiblio.scan." + key); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+  function storeSetting(key, value) {
+    try { localStorage.setItem("ubiblio.scan." + key, value); } catch (e) {}
+  }
+  const locationInputs = { library: document.getElementById('scanLibrary'), shelf: document.getElementById('scanShelf'), collection: document.getElementById('scanCollection') };
+  Object.keys(locationInputs).forEach(function (key) {
+    locationInputs[key].value = loadSetting(key, "");
+    locationInputs[key].addEventListener('input', function () { storeSetting(key, this.value); });
+  });
+  if (loadSetting("mode", "continuous") === "confirm") document.getElementById('modeConfirm').checked = true;
+  document.querySelectorAll('input[name="scanMode"]').forEach(function (radio) {
+    radio.addEventListener('change', function () { storeSetting("mode", this.value); updateMode(); });
+  });
+  function scanMode() { return document.querySelector('input[name="scanMode"]:checked').value; }
+  function updateMode() { document.getElementById('locationFields').style.display = scanMode() === "continuous" ? "block" : "none"; }
+  updateMode();
+
+  // EAN-13 checksum with ISBN prefix: rejects most misreads before they reach the server
+  function isValidIsbnBarcode(code) {
+    if (!/^97[89]\d{10}$/.test(code)) return false;
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+    return (10 - sum % 10) % 10 === parseInt(code[12], 10);
+  }
+
+  // Feedback: high short beep for success, low double beep for anything else
+  let audioCtx = null;
+  function beep(ok) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const tones = ok ? [[880, 0, 0.12]] : [[220, 0, 0.15], [220, 0.22, 0.15]];
+      tones.forEach(function (t) {
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.frequency.value = t[0];
+        gain.gain.value = 0.2;
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + t[1]); osc.stop(audioCtx.currentTime + t[1] + t[2]);
+      });
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(ok ? 100 : [80, 60, 80]); } catch (e) {}
+  }
+
+  // Derniers scans list
+  let sessionCount = 0;
+  function addRow(code) {
+    document.getElementById('recentScans').style.display = 'block';
+    const tr = document.createElement('tr');
+    [code, TEXT.saving, ""].forEach(function (text) { const td = document.createElement('td'); td.textContent = text; tr.appendChild(td); });
+    const body = document.getElementById('recentBody');
+    body.insertBefore(tr, body.firstChild);
+    while (body.children.length > 30) body.removeChild(body.lastChild);
+    return tr;
+  }
+  function showResult(tr, result) {
+    const ok = result.status === "added";
+    tr.children[1].textContent = TEXT[result.status] || result.status;
+    tr.children[1].style.color = ok ? "green" : (result.status === "duplicate" ? "#b36b00" : "red");
+    tr.children[1].style.fontWeight = "bold";
+    if (result.bookId) {
+      const a = document.createElement('a');
+      a.href = "/bookDetails/" + result.bookId; a.textContent = result.title || ""; a.target = "_blank";
+      tr.children[2].appendChild(a);
+    } else {
+      tr.children[2].textContent = result.title || "";
+    }
+    if (ok || result.status === "not_found") {
+      sessionCount++;
+      document.getElementById('scanCount').textContent = "(" + sessionCount + TEXT.count + ")";
+    }
+    beep(ok);
+  }
+
+  // One barcode is ignored for a few seconds after it is read, so holding a book in front of the camera saves it once
+  const REPEAT_MS = 3000;
+  const lastSeen = {};
+  function saveScan(code) {
+    const now = Date.now();
+    if (lastSeen[code] && now - lastSeen[code] < REPEAT_MS) return;
+    lastSeen[code] = now;
+    const tr = addRow(code);
+    fetch("/api/scan_add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ isbn: code, library: locationInputs.library.value, shelf: locationInputs.shelf.value, collection: locationInputs.collection.value })
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (result) {
+      showResult(tr, result);
+    }).catch(function () {
+      delete lastSeen[code];
+      tr.children[1].textContent = TEXT.networkError;
+      tr.children[1].style.color = "red";
+      beep(false);
+    });
+  }
+
+  function onDetected(result) {
+    const code = result.codeResult.code;
+    console.log("Barcode detected:", code);
+    if (!isValidIsbnBarcode(code)) {
+      scanMsg.textContent = TEXT.rejected + code;
+      return;
+    }
+    if (scanMode() === "continuous") {
+      saveScan(code);
+      return;
+    }
+    // Confirm mode: open the form for this book
+    stopScanner();
+    window.location.href = "/isbn/" + encodeURIComponent(code) + "/scan";
   }
 
   // Quagga camera scanner implementation
@@ -70,7 +218,7 @@ function getCookie(name) {
   const scanMsg = document.getElementById('scanMsg');
   const interactive = document.getElementById('interactive');
   const cameraSelect = document.getElementById('cameraSelect');
-  
+
   let selectedDeviceId = null;
   let isScanning = false;
 
@@ -85,21 +233,22 @@ function getCookie(name) {
       // Request camera permission first
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       stream.getTracks().forEach(track => track.stop());
-      
+
       // Now enumerate devices
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      
-      cameraSelect.innerHTML = '<option value="">Select a camera...</option>';
+
+      cameraSelect.innerHTML = '<option value="">Sélectionner une caméra...</option>';
       videoDevices.forEach((device, index) => {
         const option = document.createElement('option');
         option.value = device.deviceId;
         option.text = device.label || `Camera ${index + 1}`;
         cameraSelect.appendChild(option);
       });
-      
+
       // Auto-select the first camera if available
       if (videoDevices.length > 0) {
+        if (!videoDevices[savedCamera]) savedCamera = 0;
         cameraSelect.value = videoDevices[savedCamera].deviceId;
         selectedDeviceId = videoDevices[savedCamera].deviceId;
         // Might as well start scanning right away
@@ -114,7 +263,7 @@ function getCookie(name) {
   // Camera selection change
   cameraSelect.addEventListener('change', async function() {
     selectedDeviceId = this.value;
-    
+
     // If already scanning, restart with new camera
     if (isScanning) {
       stopScanner();
@@ -136,7 +285,7 @@ function getCookie(name) {
       scanMsg.textContent = 'Please select a camera first';
       return;
     }
-    
+
     scanMsg.textContent = 'Initializing camera...';
     interactive.style.display = 'block';
     startBtn.style.display = 'none';
@@ -174,15 +323,9 @@ function getCookie(name) {
       Quagga.start();
     });
 
-    // Handle detected barcodes
-    Quagga.onDetected(function(result) {
-      const code = result.codeResult.code;
-      console.log("Barcode detected:", code);
-      
-      // Navigate to ISBN page
-      stopScanner();
-      window.location.href = "/isbn/" + encodeURIComponent(code) + "/scan";
-    });
+    // Handle detected barcodes; remove the previous handler so a restart does not register it twice
+    Quagga.offDetected(onDetected);
+    Quagga.onDetected(onDetected);
   }
 
   function stopScanner() {
@@ -212,7 +355,7 @@ function getCookie(name) {
     top: 0;
     left: 0;
   }
-  
+
   #cameraSelect {
     min-width: 200px;
     max-width: 100%;

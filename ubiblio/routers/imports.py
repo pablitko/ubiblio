@@ -1,5 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from pydantic import BaseModel, ConfigDict, Field
 
 from .. import isbn_import
 from ..database import SessionLocal
@@ -83,6 +84,30 @@ def import_isbn_report(job_id: str, user: admin_user):
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# --------------------------------------------------------------------------
+# Continuous scanning: one barcode -> one saved book, JSON in and out
+# --------------------------------------------------------------------------
+class ScanAdd(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    isbn: str = Field(max_length=32)
+    library: str = Field(default="", max_length=200)
+    shelf: str = Field(default="", max_length=200)
+    collection: str = Field(default="", max_length=200)
+
+
+@router.post("/api/scan_add", dependencies=[get_rate_limiter(times=5, seconds=1)])
+def scan_add(body: ScanAdd, user: admin_user):
+    db = SessionLocal()
+    try:
+        known = isbn_import.existing_isbns(db)
+        result = isbn_import.add_book_by_isbn(
+            db, body.isbn, known, service.lookup_book_metadata_by_isbn,
+            body.library.strip(), body.shelf.strip(), body.collection.strip())
+    finally:
+        db.close()
+    return {key: result.get(key) for key in ("status", "isbn", "title", "author", "bookId", "error")}
 
 
 # --------------------------------------------------------------------------
