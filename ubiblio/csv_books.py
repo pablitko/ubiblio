@@ -4,9 +4,10 @@ Files with a header row are mapped by column name (see SPEC_COLUMNS). Files with
 a header are read with the legacy layout written by older versions of /exportcsv.
 """
 import csv
-import re
 import sqlite3
 from dataclasses import dataclass, field
+
+from .isbn import comparable_isbn
 
 # Column order of the CSV specification; only `title` is required on import.
 SPEC_COLUMNS = [
@@ -39,8 +40,8 @@ class ImportReport:
 
 
 def clean_isbn(value):
-    """Strip separators so '978-83-240-1234-5' and '9788324012345' compare equal."""
-    return re.sub(r"[^0-9X]", "", (value or "").upper())
+    """Separators are ignored and ISBN-10 matches its ISBN-13 form."""
+    return comparable_isbn(value)
 
 
 def _text_key(value):

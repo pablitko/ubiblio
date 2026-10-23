@@ -4,54 +4,56 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ... import crud, schemas
+from ...isbn import normalize_isbn
+from ...vars import METADATA_SOURCES
 from .book_metadata_client import BookMetadataClient
 
 
 # --------------------------------------------------------------------------
 # External metadata (ISBN / title lookup)
 # --------------------------------------------------------------------------
+METADATA_SOURCE_METHODS = {
+    "bn": ("Biblioteka Narodowa", "bn_by_isbn"),
+    "google": ("Google Books", "google_books_by_isbn"),
+    "openlibrary": ("Open Library", "open_library_by_isbn"),
+    "wikipedia": ("Wikipedia", "open_wiki_by_isbn"),
+}
+
+
+def metadata_source_order(isbn: str, sources: list[str] | None = None) -> list[str]:
+    """Configured source order; BN goes last for ISBNs outside the Polish 978-83 prefix."""
+    order = [s for s in (sources if sources is not None else METADATA_SOURCES) if s in METADATA_SOURCE_METHODS]
+    if "bn" in order and not isbn.startswith("97883"):
+        order = [s for s in order if s != "bn"] + ["bn"]
+    return order
+
+
 def lookup_book_metadata_by_isbn(isbn: str) -> dict[str, Any]:
     """
-    Resolve ISBN to Title/Author/Summary via Google Books, then Open Library, then Wikipedia.
-    Raises LookupError if no source returns data.
+    Resolve ISBN to Title/Author/Summary, trying the sources from METADATA_SOURCES in order.
+    A failing source does not stop the others. Raises LookupError if no source returns data.
     """
-    book: dict[str, Any] = {}
     isbn = isbn.strip()
-    response = 0
+    try:
+        isbn = normalize_isbn(isbn)
+    except ValueError:
+        pass
     client = BookMetadataClient()
 
-    try:
-        book, response = client.google_books_by_isbn(isbn)
-        if response is not None and response != 200:
-            print("Google Books API failed with response: ")
-            print(response)
-    except Exception:
-        print("Google Books API failed with response: ")
-        print(response)
-
-    try:
-        if len(book) == 0:
-            book, response = client.open_library_by_isbn(isbn)
+    for source in metadata_source_order(isbn):
+        name, method = METADATA_SOURCE_METHODS[source]
+        try:
+            book, response = getattr(client, method)(isbn)
             if response is not None and response != 200:
-                print("Open Library API failed with response: ")
+                print(name + " API failed with response: ")
                 print(response)
-    except Exception as e:
-        print("Open Library API failed with response: ")
-        print(e)
+            if book.get("Title"):
+                return book
+        except Exception as e:
+            print(name + " API failed with response: ")
+            print(e)
 
-    try:
-        if len(book) == 0:
-            book, response = client.open_wiki_by_isbn(isbn)
-            if response != 200:
-                print("Wikipedia API failed with response: ")
-                print(response)
-    except Exception as e:
-        print("Wikipedia API failed with response: ")
-        print(e)
-
-    if len(book) == 0:
-        raise LookupError(f"Book with isbn {isbn} not found!")
-    return book
+    raise LookupError(f"Book with isbn {isbn} not found!")
 
 
 # --------------------------------------------------------------------------

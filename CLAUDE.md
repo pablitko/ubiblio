@@ -46,3 +46,9 @@ Then open `/user-setup/` once and log in.
 title,author,summary,genre,library,shelf,collection,ISBN,notes,owned,withdrawn,ebook,customField1,customField2[,withdrawnBy]
 ```
 Only `title` is required. `owned` defaults to 1, `withdrawn` and `ebook` to 0. Booleans: `1/0/true/false/tak/nie`, case-insensitive. UTF-8 (BOM allowed). Export adds `withdrawnBy` as the last column. Duplicates: same ISBN ignoring separators, or (without ISBN) same title+author ignoring case and extra whitespace.
+
+## ISBN and metadata
+- `ubiblio/isbn.py`: `normalize_isbn` (ISBN-10/13 -> ISBN-13, checksum validated). New code stores ISBN-13 without separators; `comparable_isbn` is the duplicate-detection key.
+- Metadata sources and order: `METADATA_SOURCES` (default `bn,google,openlibrary,wikipedia`); BN is moved last for ISBNs outside 978-83. Google Books runs only with `GB_API`.
+- BN (`data.bn.org.pl`) matches `isbnIssn` literally and stores pre-2007 books as ISBN-10, so `bn_by_isbn` queries ISBN-13 and then ISBN-10. Real responses are in `tests/fixtures/bn/`.
+- Bulk import (`/import_isbn`, `ubiblio/isbn_import.py`): background job, state in process memory (`JOBS`) – run a single worker. `METADATA_DELAY_S` (default 1.0) between lookups. Unknown books are saved as `ISBN <n>` with note `do-uzupelnienia` and listed at `/to_complete`.

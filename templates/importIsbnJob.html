@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>ISBN Import</h1>
+    <p id="progress">Processed <span id="done">{{ job.results|length }}</span> of {{ job.total }} &mdash; <span id="state">{{ job.state }}</span></p>
+    <progress id="bar" max="{{ job.total }}" value="{{ job.results|length }}" style="width:100%"></progress>
+    <p id="counts"></p>
+    <p><a href="/import_isbn/report/{{ job.id }}">Download report (CSV)</a> | <a href="/to_complete">Books to complete</a> | <a href="/import_isbn">New import</a></p>
+    <table>
+      <thead><tr><th>ISBN</th><th>Result</th><th>Title</th><th>Author</th></tr></thead>
+      <tbody id="results"></tbody>
+    </table>
+  </div>
+</section>
+<script>
+  var LABELS = {added: "added", not_found: "not found (saved to complete)", duplicate: "already in the library", invalid: "invalid ISBN", error: "error"};
+  function cell(text) { var td = document.createElement("td"); td.textContent = text || ""; return td; }
+  function render(job) {
+    document.getElementById("done").textContent = job.done;
+    document.getElementById("state").textContent = job.state;
+    document.getElementById("bar").value = job.done;
+    var c = job.counts;
+    document.getElementById("counts").textContent = "Added: " + c.added + " | Not found: " + c.not_found + " | Duplicates: " + c.duplicate + " | Invalid: " + c.invalid + " | Errors: " + c.error;
+    var body = document.getElementById("results");
+    body.textContent = "";
+    job.results.forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.appendChild(cell(r.isbn || r.input));
+      tr.appendChild(cell(LABELS[r.status] || r.status));
+      var title = cell("");
+      if (r.bookId) { var a = document.createElement("a"); a.href = "/bookDetails/" + r.bookId; a.textContent = r.title; title.appendChild(a); }
+      else { title.textContent = r.title || ""; }
+      tr.appendChild(title);
+      tr.appendChild(cell(r.author));
+      body.appendChild(tr);
+    });
+  }
+  function poll() {
+    fetch("/import_isbn/status/{{ job.id }}").then(function (r) { return r.json(); }).then(function (job) {
+      render(job);
+      if (job.state === "queued" || job.state === "running") { setTimeout(poll, 1500); }
+    }).catch(function () { setTimeout(poll, 5000); });
+  }
+  poll();
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>Books to Complete</h1>
+    <p>Books saved without full metadata (note "do-uzupelnienia"). Open a book, fill in the details and remove the note.</p>
+    {% if books %}
+    <table>
+      <thead><tr><th>Title</th><th>Author</th><th>ISBN</th><th>Shelf</th><th>Notes</th></tr></thead>
+      <tbody>
+      {% for book in books %}
+      <tr><td><a href="/update_book/{{ book.id }}">{{ book.title }}</a></td><td>{{ book.author or "" }}</td><td>{{ book.ISBN or "" }}</td><td>{{ book.shelf or "" }}</td><td>{{ book.notes or "" }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>Nothing to complete.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
