@@ -18,6 +18,7 @@ from ..dependencies import (
     configForm, get_current_user_from_cookie,
 )
 from ..vars import DB_LOCATION
+from ..messages import _
 
 router = APIRouter()
 
@@ -88,7 +89,7 @@ async def update_db(request: Request, user: admin_user):
         return RedirectResponse(url='/searchbooks')
     except Exception as e:
         print(e)
-        return "Database export failed."
+        return _("Database export failed.")
 
 
 @router.get("/updateDBVersion", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -109,7 +110,7 @@ async def update_db_version(request: Request, user: admin_user):
         return RedirectResponse(url='/searchbooks')
     except Exception as e:
         print(e)
-        return "Database export failed."
+        return _("Database export failed.")
 
 
 @router.get("/export", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -127,7 +128,7 @@ async def export_db(request: Request, user: admin_user):
         return RedirectResponse(url='/backups')
     except Exception as e:
         print(e)
-        return "Database export failed."
+        return _("Database export failed.")
 
 
 @router.get("/exportcsv", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -139,7 +140,7 @@ async def export_csv(request: Request, user: admin_user):
         return RedirectResponse(url='/backups')
     except Exception as e:
         print(e)
-        return "Database export failed."
+        return _("Database export failed.")
 
 
 @router.get("/exportcsv/download", dependencies=[get_rate_limiter(times=1, seconds=10)])
@@ -184,7 +185,7 @@ async def backups_page(request: Request, user: admin_user):
         return render_backups_page(request, user)
     except Exception as e:
         print(e)
-        return "Could not list database backups."
+        return _("Could not list database backups.")
 
 
 @router.get("/restoreBackup/{filename}", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -207,7 +208,7 @@ async def delete_backup(filename, request: Request, user: admin_user):
             return RedirectResponse(url='/backups')
     except Exception as e:
         print(e)
-        return "Delete backup failed. There may be a file permissions issue."
+        return _("Delete backup failed. There may be a file permissions issue.")
 
 
 @router.get("/addByCSV/{filename}", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -219,7 +220,7 @@ async def add_csv(filename, request: Request, user: admin_user):
             return render_backups_page(request, user, importReport=report)
     except Exception as e:
         print(e)
-        return "Error adding books -- check the search page to see what was added."
+        return _("Error adding books -- check the search page to see what was added.")
 
 
 @router.get("/downloadBackup/{filename}", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -242,7 +243,7 @@ async def upload_backup(file: UploadFile, user: admin_user):
                 while chunk := await file.read(CHUNK_SIZE):
                     await f.write(chunk)
             return RedirectResponse("/backups", status.HTTP_303_SEE_OTHER)
-        return "Not a valid backup"
+        return _("Not a valid backup")
     except Exception as e:
         return {"message": e.args}
 
@@ -257,7 +258,7 @@ async def file_backup(request: Request, user: admin_user):
         return RedirectResponse(url='/backups')
     except Exception as e:
         print(e)
-        return "File backup failed."
+        return _("File backup failed.")
 
 
 @router.get("/restoreFileBackup/{filename}", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)
@@ -267,7 +268,7 @@ async def restore_files(filename, request: Request, user: admin_user):
         return RedirectResponse(url='/')
     except Exception as e:
         print(e)
-        return "File restore failed."
+        return _("File restore failed.")
 
 
 # --------------------------------------------------------------------------
@@ -287,7 +288,7 @@ async def config_page(request: Request, user: admin_user):
         return templates.TemplateResponse(request, "config.html", context)
     except Exception as e:
         print(e)
-        return "Could not load library configuration."
+        return _("Could not load library configuration.")
 
 
 @router.post("/config", dependencies=[get_rate_limiter(times=1, seconds=5)], response_class=HTMLResponse)
@@ -310,7 +311,7 @@ async def update_config(request: Request, user: admin_user):
             return templates.TemplateResponse(request, "config.html", context)
     except Exception as e:
         print(e)
-        return "Could not update library configuration."
+        return _("Could not update library configuration.")
 
 
 # --------------------------------------------------------------------------
@@ -333,7 +334,7 @@ async def user_promote(request: Request, userId: int, user: admin_user):
         return RedirectResponse(url='/userManagement')
     except Exception as e:
         print(e)
-        return "Could not promote user."
+        return _("Could not promote user.")
     finally:
         db.close()
 
@@ -346,7 +347,7 @@ async def user_demote(request: Request, userId: int, user: admin_user):
         return RedirectResponse(url='/userManagement')
     except Exception as e:
         print(e)
-        return "Could not demote user."
+        return _("Could not demote user.")
     finally:
         db.close()
 
@@ -359,7 +360,7 @@ async def user_delete(request: Request, userId: int, user: admin_user):
         return RedirectResponse(url='/userManagement')
     except Exception as e:
         print(e)
-        return "Could not delete user."
+        return _("Could not delete user.")
     finally:
         db.close()
 
@@ -372,7 +373,7 @@ def search_users(request: Request, user: admin_user, username: str = "%"):
         return json.dumps(users)
     except Exception as e:
         print(e)
-        return "User search failed."
+        return _("User search failed.")
     finally:
         db.close()
 
@@ -390,7 +391,7 @@ async def new_user_code(request: Request, user: admin_user):
         return templates.TemplateResponse(request, "userLink.html", context)
     except Exception as e:
         print(e)
-        return "Could not generate a new user code."
+        return _("Could not generate a new user code.")
     finally:
         db.close()
 
@@ -413,7 +414,7 @@ async def stats_post(user: admin_user, body: bytes = Depends(get_body)):
         return json.dumps(result)
     except Exception as e:
         print(e)
-        return "Fail"
+        return _("Fail")
     finally:
         db.close()
 
@@ -441,6 +442,6 @@ async def stats_get(request: Request, user: admin_user):
         return templates.TemplateResponse(request, "stats.html", context)
     except Exception as e:
         print(e)
-        return "Fail"
+        return _("Fail")
     finally:
         db.close()

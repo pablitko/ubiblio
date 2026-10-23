@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from .isbn import comparable_isbn
+from .messages import _
 
 # Column order of the CSV specification; only `title` is required on import.
 SPEC_COLUMNS = [
@@ -75,7 +76,7 @@ def parse_bool(value, default):
         return True
     if text in FALSE_VALUES:
         return False
-    raise ValueError(f"invalid boolean value {value!r}")
+    raise ValueError(_("invalid boolean value {value!r}", value=value))
 
 
 def parse_int(name, value):
@@ -83,7 +84,7 @@ def parse_int(name, value):
     if not text:
         return None
     if not text.isdigit():
-        raise ValueError(f"{name} must be a whole number, got {value!r}")
+        raise ValueError(_("{name} must be a whole number, got {value!r}", name=name, value=value))
     return int(text)
 
 
@@ -94,7 +95,7 @@ def parse_date(name, value):
     try:
         return str(datetime.fromisoformat(text).replace(tzinfo=None))
     except ValueError:
-        raise ValueError(f"{name} must be a date like 2026-10-23, got {value!r}") from None
+        raise ValueError(_("{name} must be a date like 2026-10-23, got {value!r}", name=name, value=value)) from None
 
 
 def _utcnow():
@@ -150,7 +151,7 @@ def import_csv(filename, db_location):
                 for number, row in _read_rows(f, report):
                     title = row.get("title", "")
                     if not title:
-                        report.errors.append((number, "missing title"))
+                        report.errors.append((number, _("missing title")))
                         continue
                     try:
                         flags = {
@@ -165,14 +166,14 @@ def import_csv(filename, db_location):
                         continue
                     isbn, author = row.get("ISBN", ""), row.get("author", "")
                     if _lookup_key(isbn, title, author) in known:
-                        report.skipped.append((number, f"duplicate: {title}"))
+                        report.skipped.append((number, _("duplicate: {title}", title=title)))
                         continue
                     known |= _dedup_keys(isbn, title, author)
                     book = {name: row.get(name) or None for name in EXPORT_COLUMNS}
                     book.update(flags)
                     new_books.append(book)
         except UnicodeDecodeError:
-            report.errors.append((0, "file is not UTF-8 encoded"))
+            report.errors.append((0, _("file is not UTF-8 encoded")))
             return report
 
         placeholders = ", ".join("?" for _ in EXPORT_COLUMNS)

@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.sql import func
 from passlib.handlers.sha2_crypt import sha512_crypt as crypto
 from . import models, schemas, csv_books
+from .text import normalize_text
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import sqlite3
@@ -97,71 +98,31 @@ def getBooks(db: Session, skip: int = 0, limit: int = 50):
   
   
     
+def _matches(column, term):
+    #Case- and diacritic-insensitive "contains" (ub_norm is registered in database.py); '%' still matches everything
+    return func.ub_norm(column).like("%" + normalize_text(str(term)) + "%")
+
+def _search(db: Session, condition, orderColumn, skip: int, onlyEbooks: bool, noEbooks: bool, limit: int):
+    #Only owned books are searchable. onlyEbooks/noEbooks filter when exactly one of them is set.
+    condition = condition & (models.Book.owned == True)
+    if onlyEbooks and not noEbooks:
+        condition = condition & (models.Book.ebook == True)
+    elif noEbooks and not onlyEbooks:
+        condition = condition & (models.Book.ebook == False)
+    query = db.query(models.Book).filter(condition)
+    resultCount = query.with_entities(func.count()).scalar()
+    result = query.order_by(func.ub_norm(orderColumn).asc(), models.Book.id.asc()).limit(limit).offset(skip).all()
+    return result, resultCount
+
 def searchBooks(db: Session, title, author, skip: int, onlyEbooks: bool, noEbooks:bool, limit: int = 50):
-    if (onlyEbooks==True) and (noEbooks==False):
-        resultCount = db.query(models.Book).filter(
-    (or_(models.Book.title.icontains(title),
-    models.Book.author.icontains(author)) & (models.Book.owned==True) & (models.Book.ebook==True))).with_entities(func.count()).scalar()
-        result = db.query(models.Book).filter(
-    (or_(models.Book.title.icontains(title),
-    models.Book.author.icontains(author)) & (models.Book.owned==True) & (models.Book.ebook==True))).order_by(models.Book.title.asc()).limit(limit).offset(skip).all()
-        return result, resultCount
-    elif (onlyEbooks==False) and (noEbooks==True):
-         resultCount = db.query(models.Book).filter(
-    (or_(models.Book.title.icontains(title),
-    models.Book.author.icontains(author)) & (models.Book.owned==True) & (models.Book.ebook==False))).with_entities(func.count()).scalar()
-         result = db.query(models.Book).filter(
-    (or_(models.Book.title.icontains(title),
-    models.Book.author.icontains(author)) & (models.Book.owned==True) & (models.Book.ebook==False))).order_by(models.Book.title.asc()).limit(limit).offset(skip).all()
-         return result, resultCount
-    else:
-        resultCount = db.query(models.Book).filter(
-    or_(models.Book.title.icontains(title),
-    models.Book.author.icontains(author)) & (models.Book.owned==True)).with_entities(func.count()).scalar()
-        result = db.query(models.Book).filter(
-    or_(models.Book.title.icontains(title),
-    models.Book.author.icontains(author)) & (models.Book.owned==True)).order_by(models.Book.title.asc()).limit(limit).offset(skip).all()
-        return result, resultCount
+    condition = or_(_matches(models.Book.title, title), _matches(models.Book.author, author))
+    return _search(db, condition, models.Book.title, skip, onlyEbooks, noEbooks, limit)
 
 def searchBooksbyAuthor(db: Session, author, skip: int, onlyEbooks: bool, noEbooks:bool, limit: int = 50):
-    if (onlyEbooks==True) and (noEbooks==False):
-        resultCount = db.query(models.Book).filter(
-    models.Book.author.icontains(author) & (models.Book.owned==True) & (models.Book.ebook==True)).with_entities(func.count()).scalar()
-        result = db.query(models.Book).filter(
-    models.Book.author.icontains(author) & (models.Book.owned==True) & (models.Book.ebook==True)).order_by(models.Book.author.asc()).limit(limit).offset(skip).all()
-        return result, resultCount
-    elif (onlyEbooks==False) and (noEbooks==True):
-        result = db.query(models.Book).filter(
-    models.Book.author.icontains(author) & (models.Book.owned==True) & (models.Book.ebook==False)).order_by(models.Book.author.asc()).limit(limit).offset(skip).all()
-        resultCount = db.query(models.Book).filter(
-    models.Book.author.icontains(author) & (models.Book.owned==True) & (models.Book.ebook==False)).with_entities(func.count()).scalar()
-        return result, resultCount
-    else:
-        result = db.query(models.Book).filter(
-    models.Book.author.icontains(author) & (models.Book.owned==True)).order_by(models.Book.author.asc()).limit(limit).offset(skip).all()
-        resultCount = db.query(models.Book).filter(
-    models.Book.author.icontains(author) & (models.Book.owned==True)).with_entities(func.count()).scalar()
-        return result, resultCount
+    return _search(db, _matches(models.Book.author, author), models.Book.author, skip, onlyEbooks, noEbooks, limit)
 
 def searchBooksbyTitle(db: Session, title, skip: int, onlyEbooks: bool, noEbooks:bool, limit: int = 50):
-    if (onlyEbooks==True) and (noEbooks==False):
-        result = db.query(models.Book).filter(
-    models.Book.title.icontains(title) & (models.Book.owned==True) & (models.Book.ebook==True)).order_by(models.Book.title.asc()).limit(limit).offset(skip).all()
-        resultCount = db.query(models.Book).filter(
-    models.Book.title.icontains(title) & (models.Book.owned==True) & (models.Book.ebook==True)).with_entities(func.count()).scalar()
-        return result, resultCount    
-    elif (onlyEbooks==False) and (noEbooks==True):
-        result = db.query(models.Book).filter(
-    models.Book.title.icontains(title) & (models.Book.owned==True) & (models.Book.ebook==False)).order_by(models.Book.title.asc()).limit(limit).offset(skip).all()
-        resultCount = db.query(models.Book).filter(
-    models.Book.title.icontains(title) & (models.Book.owned==True) & (models.Book.ebook==False)).with_entities(func.count()).scalar()
-        return result, resultCount
-    else:
-        result = db.query(models.Book).filter(
-    models.Book.title.icontains(title) & (models.Book.owned==True)).order_by(models.Book.title.asc()).limit(limit).offset(skip).all()    
-        resultCount = db.query(models.Book).filter(
-    models.Book.title.icontains(title) & (models.Book.owned==True)).with_entities(func.count()).scalar()
-        return result, resultCount
+    return _search(db, _matches(models.Book.title, title), models.Book.title, skip, onlyEbooks, noEbooks, limit)
 
 def browseBooksByGenre(db: Session, genre):
     return db.query(models.Book).filter(models.Book.genre == genre)

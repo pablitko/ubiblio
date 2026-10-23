@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import Request
 
 from .. import schemas
+from ..messages import _
 
 
 class LoginForm:
@@ -19,9 +20,9 @@ class LoginForm:
 
     async def is_valid(self):
         if not self.username:
-            self.errors.append("Please enter your username")
+            self.errors.append(_("Please enter your username"))
         if not self.password or not len(self.password) >= 3:
-            self.errors.append("A valid password is required")
+            self.errors.append(_("A valid password is required"))
         if not self.errors:
             return True
         return False
@@ -43,11 +44,11 @@ class newUserForm:
 
     async def is_valid(self):
         if not self.username:
-            self.errors.append("Please enter your username")
+            self.errors.append(_("Please enter your username"))
         if not self.password or not len(self.password) >= 3:
-            self.errors.append("A valid password over 3 characters is required")
+            self.errors.append(_("A valid password over 3 characters is required"))
         if not self.accessCode:
-            self.errors.append("Something went wrong with your access link. Reload this page, or contact your library admin.")
+            self.errors.append(_("Something went wrong with your access link. Reload this page, or contact your library admin."))
         if not self.errors:
             return True
         return False
@@ -67,7 +68,7 @@ class newVkeyForm:
 
     async def is_valid(self):
         if not self.url:
-            self.errors.append("Validation keys require a URL to tie them to")
+            self.errors.append(_("Validation keys require a URL to tie them to"))
         if not self.errors:
             return True
         return False
@@ -122,11 +123,11 @@ class bookForm:
                 setattr(self, name, int(value))
             else:
                 setattr(self, name, None)
-                self.errors.append(f"{name} must be a whole number.")
+                self.errors.append(_("{name} must be a whole number.", name=name))
 
     async def is_valid(self):
         if not self.title:
-            self.errors.append("At least a title is required to create a book.")
+            self.errors.append(_("At least a title is required to create a book."))
         if not self.errors:
             return True
         return False
@@ -152,9 +153,9 @@ class configForm:
 
     async def is_valid(self):
         if not self.version:
-            self.errors.append("Database version is required so as not to break the DB")
+            self.errors.append(_("Database version is required so as not to break the DB"))
         if not self.version:
-            self.errors.append("Enable Cover Images must be either True or False")
+            self.errors.append(_("Enable Cover Images must be either True or False"))
         if not self.errors:
             return True
         return False

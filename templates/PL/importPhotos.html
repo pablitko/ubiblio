@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>Import książek ze zdjęć półek</h1>
+    {% for error in errors %}
+    <p style="color: red">{{ error }}</p>
+    {% endfor %}
+    {% if not enabled %}
+    <p><strong>Import ze zdjęć jest wyłączony.</strong> Aby go włączyć, utwórz klucz API w Google AI Studio (aistudio.google.com) i uruchom uBiblio ze zmiennymi środowiskowymi <code>GEMINI_API_KEY</code> (klucz) oraz <code>GEMINI_MODEL</code> (aktualny model obsługujący obrazy, np. Flash lub Flash-Lite z ai.google.dev/gemini-api/docs/models).</p>
+    {% else %}
+    <p style="border-left: 4px solid #b36b00; padding-left: 10px;"><strong>Prywatność:</strong> zdjęcia trafiają do Google Gemini. W planie darmowym Google może używać przesłanych treści do ulepszania swoich produktów. Fotografuj tylko grzbiety książek &ndash; bez ludzi, dokumentów i wnętrz.</p>
+    <p>Każde zdjęcie jest odczytywane osobno i daje listę kandydatów. <strong>Nic się nie zapisuje, dopóki nie zatwierdzisz kandydatów</strong>; zapisane książki dostają notatkę "z-zdjecia, do-weryfikacji" i trafiają na listę <a href="/to_complete">Do uzupełnienia</a>.</p>
+    <p>Wskazówki: jedna półka na zdjęcie, aparat na wprost grzbietów, dobre światło bez odbić, 15&ndash;30 grzbietów na zdjęcie, grzbiety czytelne.</p>
+    <form action="/import_photos" method="post" enctype="multipart/form-data">
+      <p><label for="files">Zdjęcia (do {{ maxImages }}, {{ maxMb|round(0)|int }} MB każde):</label>
+      <input type="file" id="files" name="files" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple required></p>
+      <p>Dla wszystkich zapisanych książek:</p>
+      <p><label for="library">Biblioteka</label><input type="text" id="library" name="library"></p>
+      <p><label for="shelf">Półka</label><input type="text" id="shelf" name="shelf"></p>
+      <p><label for="collection">Kolekcja</label><input type="text" id="collection" name="collection"></p>
+      <input type="submit" value="Odczytaj zdjęcia">
+    </form>
+    {% endif %}
+    <hr />
+  </div>
+</section>
+{% endblock %}

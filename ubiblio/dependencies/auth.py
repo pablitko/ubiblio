@@ -11,6 +11,7 @@ from rich import print
 
 from .. import crud, database, schemas
 from .settings import settings
+from ..messages import _
 
 
 class user_exists(Exception):
@@ -155,7 +156,7 @@ def get_admin_user(user: current_user):
     if not user.isAdmin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only an admin can perform this action."
+            detail=_("Only an admin can perform this action.")
         )
     return user
 

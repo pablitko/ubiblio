@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block main %}
+<!-- Banner -->
+<!-- Two -->
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    {% for error in errors %}
+    <p style="color: red">{{ error }}</p>
+    {% endfor %}
+    <h1>Skanowanie ISBN</h1>
+
+    <!-- Scanner UI -->
+    <div id="scannerControls">
+      <div style="margin-bottom: 10px">
+        <label for="cameraSelect">Kamera: </label>
+        <select id="cameraSelect" style="padding: 5px">
+          <option value="">Wybierz kamerę...</option>
+        </select>
+      </div>
+      <div id="modeSelect" style="margin-bottom: 10px">
+        <input type="radio" id="modeContinuous" name="scanMode" value="continuous" checked>
+        <label for="modeContinuous">Ciągły: każda książka zapisuje się sama</label>
+        <input type="radio" id="modeConfirm" name="scanMode" value="confirm">
+        <label for="modeConfirm">Zatwierdzaj każdą książkę</label>
+      </div>
+      <div id="locationFields" style="margin-bottom: 10px">
+        <label for="scanLibrary">Biblioteka</label><input type="text" id="scanLibrary">
+        <label for="scanShelf">Bieżąca półka</label><input type="text" id="scanShelf">
+        <label for="scanCollection">Kolekcja</label><input type="text" id="scanCollection">
+      </div>
+      <button id="startScanBtn" type="button">Włącz skanowanie</button>
+      <button id="stopScanBtn" type="button" style="display:none">Zatrzymaj skanowanie</button>
+	<a style ="text-decoration:none !important; border:none; margin-top: 10px;" href="/addisbn"><button>Wpisz ręcznie</button></a>
+		<div style="display: block, float:none; clear:both; padding-top:10px;">
+<input id="savecamera" type="button" value="Zapamiętaj kamerę" onclick="saveCamera();" />
+		</div>
+      <p id="scanMsg" style="color: #555"></p>
+      <div id="scannerContainer" style="margin-top:8px; position:relative">
+        <div id="interactive" class="viewport" style="width:100%;max-width:420px;display:none"></div>
+      </div>
+      <div id="recentScans" style="display:none">
+        <h3>Ostatnie skany <span id="scanCount"></span></h3>
+        <table>
+          <thead><tr><th>ISBN</th><th>Wynik</th><th>Tytuł</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+<script src="{{ url_for('static', path='assets/js/quagga.min.js') }}"></script>
+
+<script>
+function saveCamera() {
+        document.cookie = "cameraIndex=" + (cameraSelect.selectedIndex - 1); //index is off-by-one so we correct here.
+  }
+
+function getCookie(name) {
+    var dc = document.cookie;
+    var prefix = name + "=";
+    var begin = dc.indexOf("; " + prefix);
+    if (begin == -1) {
+        begin = dc.indexOf(prefix);
+        if (begin != 0) return null;
+    }
+    else
+    {
+        begin += 2;
+        var end = document.cookie.indexOf(";", begin);
+        if (end == -1) {
+        end = dc.length;
+        }
+    }
+    // because unescape has been deprecated, replaced with decodeURI
+    //return unescape(dc.substring(begin + prefix.length, end));
+    return decodeURI(dc.substring(begin + prefix.length, end));
+}
+
+
+  function isbn() {
+    var isbnLink = document.getElementsByName("isbnLink")[0].value;
+    if (isbnLink) window.location.href = "/isbn/" + encodeURIComponent(isbnLink)+"/scan";
+  }
+
+  // Messages shown to the user (translated in templates/FR)
+  const TEXT = {
+    added: "dodana",
+    duplicate: "już jest w bibliotece",
+    not_found: "nie znaleziono, zapisana do uzupełnienia",
+    invalid: "nieprawidłowy ISBN",
+    error: "błąd",
+    saving: "zapisywanie...",
+    networkError: "błąd sieci, spróbuj ponownie",
+    rejected: "Pominięto błędnie odczytany kod: ",
+    count: " w tej sesji"
+  };
+
+  // Settings remembered in this browser; storage may be unavailable (private mode)
+  function loadSetting(key, fallback) {
+    try { const v = localStorage.getItem("ubiblio.scan." + key); return v === null ? fallback : v; } catch (e) { return fallback; }
+  }
+  function storeSetting(key, value) {
+    try { localStorage.setItem("ubiblio.scan." + key, value); } catch (e) {}
+  }
+  const locationInputs = { library: document.getElementById('scanLibrary'), shelf: document.getElementById('scanShelf'), collection: document.getElementById('scanCollection') };
+  Object.keys(locationInputs).forEach(function (key) {
+    locationInputs[key].value = loadSetting(key, "");
+    locationInputs[key].addEventListener('input', function () { storeSetting(key, this.value); });
+  });
+  if (loadSetting("mode", "continuous") === "confirm") document.getElementById('modeConfirm').checked = true;
+  document.querySelectorAll('input[name="scanMode"]').forEach(function (radio) {
+    radio.addEventListener('change', function () { storeSetting("mode", this.value); updateMode(); });
+  });
+  function scanMode() { return document.querySelector('input[name="scanMode"]:checked').value; }
+  function updateMode() { document.getElementById('locationFields').style.display = scanMode() === "continuous" ? "block" : "none"; }
+  updateMode();
+
+  // EAN-13 checksum with ISBN prefix: rejects most misreads before they reach the server
+  function isValidIsbnBarcode(code) {
+    if (!/^97[89]\d{10}$/.test(code)) return false;
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += parseInt(code[i], 10) * (i % 2 === 0 ? 1 : 3);
+    return (10 - sum % 10) % 10 === parseInt(code[12], 10);
+  }
+
+  // Feedback: high short beep for success, low double beep for anything else
+  let audioCtx = null;
+  function beep(ok) {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const tones = ok ? [[880, 0, 0.12]] : [[220, 0, 0.15], [220, 0.22, 0.15]];
+      tones.forEach(function (t) {
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.frequency.value = t[0];
+        gain.gain.value = 0.2;
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + t[1]); osc.stop(audioCtx.currentTime + t[1] + t[2]);
+      });
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(ok ? 100 : [80, 60, 80]); } catch (e) {}
+  }
+
+  // Recent scans list
+  let sessionCount = 0;
+  function addRow(code) {
+    document.getElementById('recentScans').style.display = 'block';
+    const tr = document.createElement('tr');
+    [code, TEXT.saving, ""].forEach(function (text) { const td = document.createElement('td'); td.textContent = text; tr.appendChild(td); });
+    const body = document.getElementById('recentBody');
+    body.insertBefore(tr, body.firstChild);
+    while (body.children.length > 30) body.removeChild(body.lastChild);
+    return tr;
+  }
+  function showResult(tr, result) {
+    const ok = result.status === "added";
+    tr.children[1].textContent = TEXT[result.status] || result.status;
+    tr.children[1].style.color = ok ? "green" : (result.status === "duplicate" ? "#b36b00" : "red");
+    tr.children[1].style.fontWeight = "bold";
+    if (result.bookId) {
+      const a = document.createElement('a');
+      a.href = "/bookDetails/" + result.bookId; a.textContent = result.title || ""; a.target = "_blank";
+      tr.children[2].appendChild(a);
+    } else {
+      tr.children[2].textContent = result.title || "";
+    }
+    if (ok || result.status === "not_found") {
+      sessionCount++;
+      document.getElementById('scanCount').textContent = "(" + sessionCount + TEXT.count + ")";
+    }
+    beep(ok);
+  }
+
+  // One barcode is ignored for a few seconds after it is read, so holding a book in front of the camera saves it once
+  const REPEAT_MS = 3000;
+  const lastSeen = {};
+  function saveScan(code) {
+    const now = Date.now();
+    if (lastSeen[code] && now - lastSeen[code] < REPEAT_MS) return;
+    lastSeen[code] = now;
+    const tr = addRow(code);
+    fetch("/api/scan_add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ isbn: code, library: locationInputs.library.value, shelf: locationInputs.shelf.value, collection: locationInputs.collection.value })
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (result) {
+      showResult(tr, result);
+    }).catch(function () {
+      delete lastSeen[code];
+      tr.children[1].textContent = TEXT.networkError;
+      tr.children[1].style.color = "red";
+      beep(false);
+    });
+  }
+
+  function onDetected(result) {
+    const code = result.codeResult.code;
+    console.log("Barcode detected:", code);
+    if (!isValidIsbnBarcode(code)) {
+      scanMsg.textContent = TEXT.rejected + code;
+      return;
+    }
+    if (scanMode() === "continuous") {
+      saveScan(code);
+      return;
+    }
+    // Confirm mode: open the form for this book
+    stopScanner();
+    window.location.href = "/isbn/" + encodeURIComponent(code) + "/scan";
+  }
+
+  // Quagga camera scanner implementation
+  const startBtn = document.getElementById('startScanBtn');
+  const stopBtn = document.getElementById('stopScanBtn');
+  const scanMsg = document.getElementById('scanMsg');
+  const interactive = document.getElementById('interactive');
+  const cameraSelect = document.getElementById('cameraSelect');
+
+  let selectedDeviceId = null;
+  let isScanning = false;
+
+  // Populate camera list -- TODO index is off by 1
+  async function populateCameraList() {
+  let savedCamera = getCookie("cameraIndex");
+	  console.log(savedCamera);
+	  if (savedCamera == null) {
+		  savedCamera = 0;
+	  }
+    try {
+      // Request camera permission first
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
+
+      // Now enumerate devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+      cameraSelect.innerHTML = '<option value="">Wybierz kamerę...</option>';
+      videoDevices.forEach((device, index) => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.text = device.label || `Camera ${index + 1}`;
+        cameraSelect.appendChild(option);
+      });
+
+      // Auto-select the first camera if available
+      if (videoDevices.length > 0) {
+        if (!videoDevices[savedCamera]) savedCamera = 0;
+        cameraSelect.value = videoDevices[savedCamera].deviceId;
+        selectedDeviceId = videoDevices[savedCamera].deviceId;
+        // Might as well start scanning right away
+        startScanner();
+      }
+    } catch (err) {
+      console.error('Error enumerating devices:', err);
+      scanMsg.textContent = 'Brak dostępu do kamery: ' + err.message;
+    }
+  }
+
+  // Camera selection change
+  cameraSelect.addEventListener('change', async function() {
+    selectedDeviceId = this.value;
+
+    // If already scanning, restart with new camera
+    if (isScanning) {
+      stopScanner();
+      // Small delay before restarting
+      setTimeout(() => startScanner(), 300);
+    }
+  });
+
+  startBtn.addEventListener('click', function() {
+    startScanner();
+  });
+
+  stopBtn.addEventListener('click', function() {
+    stopScanner();
+  });
+
+  function startScanner() {
+    if (!selectedDeviceId) {
+      scanMsg.textContent = 'Najpierw wybierz kamerę';
+      return;
+    }
+
+    scanMsg.textContent = 'Uruchamianie kamery...';
+    interactive.style.display = 'block';
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block';
+    isScanning = true;
+
+    const config = {
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: document.querySelector('#interactive'),
+        constraints: {
+          deviceId: selectedDeviceId,
+          facingMode: "environment"
+        }
+      },
+      decoder: {
+        readers: [
+          "ean_reader", // EAN-13 (most common for books)
+        ]
+      },
+      locate: true,
+      numOfWorkers: navigator.hardwareConcurrency || 4,
+      frequency: 10
+    };
+
+    Quagga.init(config, function(err) {
+      if (err) {
+        console.error(err);
+        scanMsg.textContent = 'Błąd: ' + err.message;
+        stopScanner();
+        return;
+      }
+      scanMsg.textContent = 'Kamera gotowa. Skieruj ją na kod kreskowy...';
+      Quagga.start();
+    });
+
+    // Handle detected barcodes; remove the previous handler so a restart does not register it twice
+    Quagga.offDetected(onDetected);
+    Quagga.onDetected(onDetected);
+  }
+
+  function stopScanner() {
+    Quagga.stop();
+    interactive.style.display = 'none';
+    startBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    scanMsg.textContent = '';
+    isScanning = false;
+  }
+
+  // Initialize camera list on page load
+  populateCameraList();
+</script>
+
+<style>
+  #interactive.viewport {
+    position: relative;
+  }
+  #interactive.viewport canvas,
+  #interactive.viewport video {
+    width: 100%;
+    height: auto;
+  }
+  #interactive.viewport canvas.drawingBuffer {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  #cameraSelect {
+    min-width: 200px;
+    max-width: 100%;
+  }
+</style>
+{% endblock %}

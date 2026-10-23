@@ -15,6 +15,7 @@ from ..dependencies import (
     get_current_user_from_token,
     get_rate_limiter,
 )
+from ..messages import _
 
 router = APIRouter()
 
@@ -45,7 +46,7 @@ async def upload_image(file: UploadFile, bookId: int, user: admin_user):
                 crud.addImage(db, newImage)
         return RedirectResponse(url='/bookDetails/' + str(bookId), status_code=status.HTTP_303_SEE_OTHER)
         if not (extension == ".jpg") or (extension == "jpeg"):
-            return "Not a valid jpg image"
+            return _("Not a valid jpg image")
     except Exception as e:
         return {"message": e.args}
     finally:
@@ -60,7 +61,7 @@ def get_images(request: Request, bookId: int, user: current_user):
         return images
     except Exception as e:
         print(e)
-        return "An error has occured."
+        return _("An error has occured.")
     finally:
         db.close()
 
@@ -113,7 +114,7 @@ def delete_ebook(request: Request, ebookId: int, user: admin_user):
         return RedirectResponse(url='/bookDetails/' + str(bookId), status_code=status.HTTP_303_SEE_OTHER)
     except Exception as e:
         print(e)
-        return "An error has occured."
+        return _("An error has occured.")
     finally:
         db.close()
 

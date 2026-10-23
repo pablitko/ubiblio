@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>Import książek po ISBN</h1>
+    {% for error in errors %}
+    <p style="color: red">{{ error }}</p>
+    {% endfor %}
+    <p>Wklej numery ISBN, po jednym w wierszu, albo wyślij plik tekstowy (jeden ISBN w wierszu) lub plik CSV z kolumną <code>ISBN</code> . Książki są wyszukiwane po kolei i zapisywane automatycznie, duplikaty są pomijane. Książki, których nie udało się znaleźć, zapisują się jako "ISBN &lt;numer&gt;" i trafiają na listę <a href="/to_complete">Do uzupełnienia</a>.</p>
+    <form action="/import_isbn" method="post" enctype="multipart/form-data">
+      <p><label for="isbns">Numery ISBN:</label>
+      <textarea id="isbns" name="isbns" rows="10" placeholder="9788377792094&#10;83-08-02534-X"></textarea></p>
+      <p><label for="file">Albo plik:</label>
+      <input type="file" id="file" name="file" accept=".txt,.csv,text/plain,text/csv"></p>
+      <p>Dla wszystkich importowanych książek:</p>
+      <p><label for="library">Biblioteka</label><input type="text" id="library" name="library"></p>
+      <p><label for="shelf">Półka</label><input type="text" id="shelf" name="shelf"></p>
+      <p><label for="collection">Kolekcja</label><input type="text" id="collection" name="collection"></p>
+      <input type="submit" value="Importuj">
+    </form>
+    <hr />
+  </div>
+</section>
+{% endblock %}

@@ -61,3 +61,8 @@ Only `title` is required. `owned` defaults to 1, `withdrawn` and `ebook` to 0. B
 - 1.1.0 added `dateAdded` (naive UTC), `lastVerified`, `publisher`, `publishedYear`, `pages`, `language` to `books`.
 - `crud.updateBook`/`bookReturn`/`bookWithdraw` change only fields set explicitly on the schema (`exclude_unset`), so a form that does not send a field keeps it. To clear a field, pass `None` explicitly.
 - SQL dumps and restores are UTF-8 (they used the platform default before, which broke Polish characters on Windows).
+
+## Polish
+- `LANGUAGE=PL` selects `templates/PL`, which is **generated**: edit the English template, then run `python tools/make_pl_templates.py` (it lists strings missing from its dictionary; `tests/test_polish.py` fails when PL is out of date). Never edit `templates/PL` by hand. `templates/FR` is still maintained by hand.
+- Messages returned from Python go through `ubiblio.messages._("English text", **values)`; add the Polish text to `messages.PL`.
+- Search uses `ub_norm()` (registered on every SQLite connection in `database.py`, `ubiblio/text.py`): case- and diacritic-insensitive, `ł`->`l`, sorted by the normalized text.

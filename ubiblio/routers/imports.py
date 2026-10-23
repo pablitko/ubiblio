@@ -9,6 +9,7 @@ from ..dependencies import CHUNK_SIZE, admin_user, get_rate_limiter, templates
 from ..vars import METADATA_DELAY_S
 from .books import service
 from .books.vision_client import GeminiVisionClient, prepare_image
+from ..messages import _
 
 router = APIRouter()
 
@@ -43,13 +44,13 @@ async def import_isbn_post(
         try:
             items += isbn_import.parse_isbn_input((await file.read()).decode("utf-8-sig"))
         except UnicodeDecodeError:
-            context = {"request": request, "user": user, "errors": ["The file is not UTF-8 encoded."]}
+            context = {"request": request, "user": user, "errors": [_("The file is not UTF-8 encoded.")]}
             return templates.TemplateResponse(request, "importIsbn.html", context)
     errors = []
     if not items:
-        errors.append("No ISBNs given.")
+        errors.append(_("No ISBNs given."))
     if len(items) > MAX_ISBNS_PER_JOB:
-        errors.append(f"Too many ISBNs ({len(items)}); the limit is {MAX_ISBNS_PER_JOB} per import.")
+        errors.append(_("Too many ISBNs ({count}); the limit is {limit} per import.", count=len(items), limit=MAX_ISBNS_PER_JOB))
     if errors:
         context = {"request": request, "user": user, "errors": errors}
         return templates.TemplateResponse(request, "importIsbn.html", context)
@@ -62,7 +63,7 @@ async def import_isbn_post(
 def import_isbn_job_page(job_id: str, request: Request, user: admin_user):
     job = isbn_import.JOBS.get(job_id)
     if job is None:
-        return HTMLResponse("Import job not found (jobs are lost when the server restarts).", status_code=404)
+        return HTMLResponse(_("Import job not found (jobs are lost when the server restarts)."), status_code=404)
     context = {"request": request, "user": user, "job": job}
     return templates.TemplateResponse(request, "importIsbnJob.html", context)
 
@@ -158,23 +159,23 @@ async def import_photos_post(
         shelf: str = Form(""),
         collection: str = Form("")):
     if not photo_import_enabled():
-        return photo_form(request, user, ["Photo import is disabled: set GEMINI_API_KEY and GEMINI_MODEL."])
+        return photo_form(request, user, [_("Photo import is disabled: set GEMINI_API_KEY and GEMINI_MODEL.")])
     files = [f for f in files if f.filename]
     if not files:
-        return photo_form(request, user, ["No photos given."])
+        return photo_form(request, user, [_("No photos given.")])
     if len(files) > env.PHOTO_IMPORT_MAX_IMAGES:
-        return photo_form(request, user, [f"Too many photos ({len(files)}); the limit is {env.PHOTO_IMPORT_MAX_IMAGES}."])
+        return photo_form(request, user, [_("Too many photos ({count}); the limit is {limit}.", count=len(files), limit=env.PHOTO_IMPORT_MAX_IMAGES)])
     images, names, errors = [], [], []
     for file in files:
         data = await read_limited(file, int(env.PHOTO_IMPORT_MAX_MB * 1024 * 1024))
         if data is None:
-            errors.append(f"{file.filename}: larger than {env.PHOTO_IMPORT_MAX_MB:g} MB.")
+            errors.append(_("{name}: larger than {size} MB.", name=file.filename, size=f"{env.PHOTO_IMPORT_MAX_MB:g}"))
             continue
         try:
             images.append(prepare_image(data))
             names.append(file.filename)
         except ValueError:
-            errors.append(f"{file.filename}: not a supported image.")
+            errors.append(_("{name}: not a supported image.", name=file.filename))
     if errors:
         return photo_form(request, user, errors)
     job = photo_import.create_job(images, names, library.strip(), shelf.strip(), collection.strip())
@@ -186,7 +187,7 @@ async def import_photos_post(
 def import_photos_job_page(job_id: str, request: Request, user: admin_user, saved: int | None = None):
     job = photo_import.JOBS.get(job_id)
     if job is None:
-        return HTMLResponse("Import job not found (jobs are lost when the server restarts).", status_code=404)
+        return HTMLResponse(_("Import job not found (jobs are lost when the server restarts)."), status_code=404)
     context = {"request": request, "user": user, "job": job, "saved": saved}
     return templates.TemplateResponse(request, "importPhotosJob.html", context)
 

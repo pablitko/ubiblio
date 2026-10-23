@@ -9,6 +9,7 @@ from ..dependencies import (
     login_for_access_token, LoginForm, newUserForm,
 )
 from ..vars import ADMIN_USERNAME, ADMIN_PASSWORD, CREATE_ADMIN_USER, CREATE_USER, USER_USERNAME, USER_PASSWORD
+from ..messages import _
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ async def login_post(request: Request):
             return response
         except HTTPException:
             form.__dict__.update(msg="")
-            form.__dict__.get("errors").append("Incorrect Email or Password")
+            form.__dict__.get("errors").append(_("Incorrect Email or Password"))
             return templates.TemplateResponse(request, "login.html", form.__dict__)
     return templates.TemplateResponse(request, "login.html", form.__dict__)
 
@@ -57,9 +58,9 @@ async def new_user_page(request: Request, accessCode: str):
             }
             return templates.TemplateResponse(request, "createUser.html", context)
         else:
-            return "Your access code is invalid or expired."
+            return _("Your access code is invalid or expired.")
     except:
-        return "An error has occurred."
+        return _("An error has occurred.")
     finally:
         db.close()
 
@@ -77,7 +78,7 @@ async def create_user_with_code(request: Request):
             )
             success = crud.createWithCode(db, user, form.accessCode)
             if success == True:
-                errors = ["Account created successfully! Please log in with your new account."]
+                errors = [_("Account created successfully! Please log in with your new account.")]
                 context = {
                     "user": user,
                     "request": request,
@@ -87,9 +88,9 @@ async def create_user_with_code(request: Request):
             else:
                 raise Exception("Failed to create account.")
         else:
-            return "The form you submitted is not valid. Try your access link again, or contact the library admin."
+            return _("The form you submitted is not valid. Try your access link again, or contact the library admin.")
     except AssertionError:
-        errors = ["Username already exists, please choose another."]
+        errors = [_("Username already exists, please choose another.")]
         context = {
             "accessCode": form.accessCode,
             "request": request,

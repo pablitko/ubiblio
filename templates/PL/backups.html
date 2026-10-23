@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block main %}
+<!-- Banner -->
+<!-- Two -->
+<div class="inner" style = "padding: 20px 0 5em 5em;">
+<div style="display:block; clear:both; float:none;">
+<h3><strong><u>Kopie zapasowe</strong></u></h3>
+{% if importReport %}
+	<div id="importReport">
+	<h4>Import CSV</h4>
+	<p>Dodano: <strong>{{ importReport.added }}</strong> | Pominięto (duplikaty): <strong>{{ importReport.skipped|length }}</strong> | Błędy: <strong>{{ importReport.errors|length }}</strong></p>
+	{% if importReport.ignored_columns %}<p>Pominięte kolumny: {{ importReport.ignored_columns|join(", ") }}</p>{% endif %}
+	{% if importReport.skipped or importReport.errors %}
+	<table>
+		<thead><tr><th>Wiersz</th><th>Wynik</th></tr></thead>
+		<tbody>
+		{% for row, reason in importReport.errors %}<tr><td>{{ row }}</td><td>Błąd: {{ reason }}</td></tr>{% endfor %}
+		{% for row, reason in importReport.skipped %}<tr><td>{{ row }}</td><td>Pominięto: {{ reason }}</td></tr>{% endfor %}
+		</tbody>
+	</table>
+	{% endif %}
+	</div>
+<hr>
+{% endif %}
+
+	<a style="border:none; margin-right:25px;margin-right:25px;" href="/export"><button>Zrób kopię teraz</button></a>
+<hr>
+	<h3><strong><u>Przywracanie z kopii</strong></u></h3>
+	
+		<p>Przywrócenie jednego z plików poniżej całkowicie wyczyści bazę i wczyta ją z pliku. Tej operacji <b>nie da się</b> cofnąć.</p>
+
+      <!-- more table rows here -->
+	<div style = "">
+  <table>
+    <thead class="visible@l">
+      <tr>
+        <th>Nazwa pliku</th>
+        <th>Akcje</th>
+      </tr>
+    </thead>
+    <tbody id = "tablebody">	
+		{% for backup in backups %}
+		<tr><td>{{ backup }}</td><td><a class="confirm" style="border:none;" href="/restoreBackup/{{ backup }}" onclick="if (!confirm('Obecna baza zostanie usunięta i zastąpiona kopią. Na pewno?')) return false;">Przywróć</a> | <a class="confirm" style="border:none;" href="/deleteBackup/{{ backup }}" onclick="if (!confirm('Ta kopia zostanie usunięta. Na pewno?')) return false;">Usuń</a> | <a class="confirm" style="border:none;" href="/downloadBackup/{{ backup }}" >Pobierz</a></td>
+	
+{% endfor %}	
+			 </tbody>
+  </table>
+		</div>
+<hr>
+	<h3><strong><u>Kopie plików</strong></u></h3>
+	
+		<p>Poniżej są wszystkie kopie plików uBiblio, w tym wgranych e-booków i zdjęć.</p>
+
+      <!-- more table rows here -->
+	<div style = "">
+  <table>
+    <thead class="visible@l">
+      <tr>
+        <th>Nazwa pliku</th>
+        <th>Akcje</th>
+      </tr>
+    </thead>
+    <tbody id = "tablebody">	
+		{% for fileExport in fileExports %}
+		<tr><td>{{ fileExport }}</td><td><a class="confirm" style="border:none;" href="/restoreFileBackup/{{ fileExport }}" onclick="if (!confirm('Obecna baza zostanie usunięta i zastąpiona kopią. Na pewno?')) return false;">Przywróć</a> | <a class="confirm" style="border:none;" href="/deleteBackup/{{ fileExport }}" onclick="if (!confirm('Ta kopia zostanie usunięta. Na pewno?')) return false;">Usuń</a> | <a class="confirm" style="border:none;" href="/downloadBackup/{{ fileExport }}" >Pobierz</a></td>
+	
+{% endfor %}	
+			 </tbody>
+  </table>
+		</div>
+<hr>
+
+	<h3><strong><u>Eksporty listy książek</u></strong></h3>
+	<p>To same listy książek, np. do przeniesienia książek z jednej biblioteki uBiblio do innej albo do otwarcia w arkuszu kalkulacyjnym.</p>
+	<a style="border:none; margin-right:25px;margin-right:25px;" href="/exportcsv"><button>Utwórz CSV</button></a>
+	<a style="border:none; margin-right:25px;margin-right:25px;" href="/exportcsv/download"><button>Pobierz CSV</button></a>
+	
+	<p><br>Wczytanie jednego z tych plików <strong>NIE</strong> czyści bazy. Doda wszystkie książki z pliku do obecnej bazy (duplikaty są pomijane). Zanim to zrobisz, warto zrobić kopię bazy.</p>
+<table>
+    <thead class="visible@l">
+      <tr>
+        <th>Nazwa pliku</th>
+        <th>Akcje</th>
+      </tr>
+    </thead>
+    <tbody id = "tablebody">	
+		{% for bookexport in bookExports %}
+		<tr><td>{{ bookexport }}</td><td><a class="confirm" style="border:none;" href="/addByCSV/{{ bookexport }}" onclick="if (!confirm('Książki z tego pliku zostaną dodane do bazy. Na pewno?')) return false;">Dodaj do bazy</a> | <a class="confirm" style="border:none;" href="/deleteBackup/{{ bookexport }}" onclick="if (!confirm('Ten eksport zostanie usunięty. Na pewno?')) return false;">Usuń</a> | <a class="confirm" style="border:none;" href="/downloadBackup/{{ bookexport }}" >Pobierz</a></td>
+	
+{% endfor %}	
+			 </tbody>
+  </table>
+<hr>
+		<h3><strong><u>Wyślij kopię</u></strong></h3>
+		<p>Przyjmuje kopie bazy, kopie plików i eksporty listy książek, więc służy do łączenia bibliotek, przeprowadzki na nowy serwer albo do nowszej wersji aplikacji.</p>
+<div style="display:block; clear:both; float:none;">
+	<form action="/uploadBackup/" method="post" enctype="multipart/form-data">
+        <!-- File input field -->
+        <label for="file">Plik kopii: </label>
+        <input type="file" id="file" name="file" required>
+ 
+        <br><br>
+         
+        <!-- Submit button -->
+        <input type="submit" value="Wyślij">
+    </form>
+</div>
+
+<hr>
+
+</div>
+
+</div>
+{% endblock %}

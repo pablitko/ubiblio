@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block main %}
+<section id="two">
+  <div class="inner" style="padding: 20px 0 1em 0">
+    <h1>Import ze zdjęć</h1>
+    <p>Odczytane zdjęcia: <span id="done">{{ job.next_index }}</span> z {{ job.total }} &mdash; <span id="state">{{ job.state }}</span></p>
+    <progress id="bar" max="{{ job.total }}" value="{{ job.next_index }}" style="width:100%"></progress>
+    {% if job.state == "paused" %}
+    <p style="color: #b36b00">Dzienny limit Gemini się wyczerpał. Import jest wstrzymany; wznów go po {{ job.resume_after.strftime("%Y-%m-%d %H:%M %Z") if job.resume_after else "the quota resets" }}.</p>
+    {% endif %}
+    {% if job.state in ("paused", "failed") %}
+    <form action="/import_photos/job/{{ job.id }}/resume" method="post"><input type="submit" value="Wznów"></form>
+    {% endif %}
+    {% for photo, message in job.photo_errors %}
+    <p style="color: red">Zdjęcie {{ photo }} ({{ job.names[photo - 1] }}): {{ message }}</p>
+    {% endfor %}
+    {% if saved is not none %}
+    <p style="color: green"><strong>Zapisano {{ saved }} książek.</strong></p>
+    {% endif %}
+
+    {% if job.candidates %}
+    <h3>Kandydaci</h3>
+    <p>W razie potrzeby popraw tytuły i autorów, odznacz zbędne książki i zapisz. Możliwe duplikaty są odznaczone.</p>
+    <form action="/import_photos/job/{{ job.id }}/save" method="post">
+      <table>
+        <thead><tr><th>Zapisz</th><th>Zdjęcie</th><th>Tytuł</th><th>Autor</th><th>Pewność</th><th>Uwaga</th></tr></thead>
+        <tbody>
+        {% for c in job.candidates %}
+        <tr>
+          {% if c.bookId %}
+          <td>&#10003;</td><td>{{ c.photo }}</td><td><a href="/bookDetails/{{ c.bookId }}">{{ c.title }}</a></td><td>{{ c.author }}</td><td>{{ c.confidence }}</td><td>zapisana</td>
+          {% else %}
+          <td><input type="checkbox" id="save_{{ c.index }}" name="save_{{ c.index }}" value="1" {% if not c.duplicateOf %}checked{% endif %}><label for="save_{{ c.index }}"></label></td>
+          <td>{{ c.photo }}</td>
+          <td><input type="text" name="title_{{ c.index }}" value="{{ c.title }}"></td>
+          <td><input type="text" name="author_{{ c.index }}" value="{{ c.author }}"></td>
+          <td>{% if c.confidence < 0.6 %}<span style="color: red">{{ c.confidence }}</span>{% else %}{{ c.confidence }}{% endif %}</td>
+          <td>{% if c.duplicateOf %}możliwy duplikat: <a href="/bookDetails/{{ c.duplicateOf }}">{{ c.duplicateTitle }}</a>{% endif %}</td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <input type="submit" value="Zapisz zaznaczone">
+    </form>
+    {% elif job.state == "done" %}
+    <p>Ze zdjęć nie odczytano żadnej książki.</p>
+    {% endif %}
+    <p><a href="/import_photos">Nowy import ze zdjęć</a> | <a href="/to_complete">Do uzupełnienia</a></p>
+  </div>
+</section>
+{% if job.state in ("queued", "running") %}
+<script>
+  function poll() {
+    fetch("/import_photos/status/{{ job.id }}").then(function (r) { return r.json(); }).then(function (job) {
+      document.getElementById("done").textContent = job.done;
+      document.getElementById("state").textContent = job.state;
+      document.getElementById("bar").value = job.done;
+      if (job.state === "queued" || job.state === "running") { setTimeout(poll, 2000); }
+      else { window.location.reload(); }
+    }).catch(function () { setTimeout(poll, 5000); });
+  }
+  poll();
+</script>
+{% endif %}
+{% endblock %}

@@ -5,6 +5,7 @@ from . import service
 from ... import crud, schemas
 from ...database import SessionLocal
 from ...dependencies import admin_user, bookForm, current_user, get_rate_limiter, templates
+from ...messages import _
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ def add_book_form(request: Request, user: admin_user):
         return templates.TemplateResponse(request, "newBook.html", context)
     except Exception as e:
         print(e)
-        return "An error has occured."
+        return _("An error has occured.")
 
 
 @router.post("/add_book", dependencies=[get_rate_limiter(times=2, seconds=2)], response_class=HTMLResponse)
@@ -42,7 +43,7 @@ async def add_book_post(request: Request, user: admin_user):
             return RedirectResponse(url="/searchbooks/", status_code=status.HTTP_303_SEE_OTHER)
         except Exception as e:
             print(e)
-            return "Fail"
+            return _("Fail")
 
 
 @router.get("/delete_book/{bookId}", dependencies=[get_rate_limiter(times=1, seconds=1)], response_class=HTMLResponse)
@@ -77,7 +78,7 @@ async def book_details(bookId, request: Request, user: current_user):
             db.close()
             return templates.TemplateResponse(request, "bookDetails.html", context)
     if not user:
-        return "You are not logged in. Login to view books."
+        return _("You are not logged in. Login to view books.")
 
 
 @router.post("/update_book/{bookId}", dependencies=[get_rate_limiter(times=1, seconds=1)], response_class=HTMLResponse)
@@ -94,7 +95,7 @@ async def update_book(bookId, request: Request, user: admin_user):
             return RedirectResponse(url="/bookDetails/" + bookId, status_code=status.HTTP_303_SEE_OTHER)
         except Exception as e:
             print(e)
-            return "Fail"
+            return _("Fail")
 
 
 @router.get("/update_book/{bookId}", dependencies=[get_rate_limiter(times=2, seconds=2)], response_class=HTMLResponse)
@@ -113,7 +114,7 @@ def update_book_form(bookId, request: Request, user: admin_user):
         return templates.TemplateResponse(request, "updateBook.html", context)
     except Exception as e:
         print(e)
-        return "An error has occured."
+        return _("An error has occured.")
 
 
 @router.get("/scan_isbn", dependencies=[get_rate_limiter(times=3, seconds=2)], response_class=HTMLResponse)
@@ -130,7 +131,7 @@ def scan_book_form(request: Request, user: schemas.User = admin_user):
         return templates.TemplateResponse(request, "scanIsbn.html", context)
     except Exception as e:
         print(e)
-        return "An error has occured."
+        return _("An error has occured.")
 
 
 # --------------------------------------------------------------------------
@@ -177,7 +178,7 @@ def search_book_author(
         out = service.search_books_by_author_json(
             db, str(author), int(skip), bool(onlyEbooks), bool(noEbooks))
         if out is None:
-            return "An error has occured."
+            return _("An error has occured.")
         return out
     finally:
         db.close()
@@ -197,7 +198,7 @@ def search_book_title(
         out = service.search_books_by_title_json(
             db, str(title), int(skip), bool(onlyEbooks), bool(noEbooks))
         if out is None:
-            return "An error has occured."
+            return _("An error has occured.")
         return out
     finally:
         db.close()
@@ -225,7 +226,7 @@ def new_isbn(isbn, method, response: Response, request: Request, user: admin_use
         }
         return templates.TemplateResponse(request, "newBook.html", context)
     except Exception:
-        errors = ["ISBN " + str(isbn) + " not found -- try another."]
+        errors = [_("ISBN {isbn} not found -- try another.", isbn=isbn)]
         context = {
             "errors": errors,
             "user": user,
@@ -294,7 +295,7 @@ async def books_by_genre(genre, request: Request, user: current_user):
         }
         return templates.TemplateResponse(request, "booksByGenre.html", context)
     if not user:
-        return "You are not logged in. Login to view books."
+        return _("You are not logged in. Login to view books.")
 
 
 @router.get("/genre/", dependencies=[get_rate_limiter(times=2, seconds=2)], response_class=HTMLResponse)
@@ -310,4 +311,4 @@ async def book_genres(request: Request, user: current_user):
         }
         return templates.TemplateResponse(request, "genres.html", context)
     if not user:
-        return "You are not logged in. Login to view books."
+        return _("You are not logged in. Login to view books.")

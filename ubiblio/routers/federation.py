@@ -16,6 +16,7 @@ from ..dependencies import (
     templates,
 )
 from ..vars import SIGNING_KEY, VERIFY_KEY
+from ..messages import _
 
 router = APIRouter()
 
@@ -141,7 +142,7 @@ async def manage_vkeys(request: Request, user: admin_user):
         return templates.TemplateResponse(request, "vkeyManagement.html", context)
     except Exception as e:
         print(e)
-        return "Could not load verification keys."
+        return _("Could not load verification keys.")
     finally:
         db.close()
 
@@ -154,7 +155,7 @@ async def delete_vkey(request: Request, vkey: int, user: admin_user):
         return RedirectResponse(url='/manageVkeys')
     except Exception as e:
         print(e)
-        return "Could not delete verification key."
+        return _("Could not delete verification key.")
     finally:
         db.close()
 
@@ -182,7 +183,7 @@ async def add_vkey(user: admin_user, body: bytes = Depends(get_body)):
         return RedirectResponse(url='/manageVkeys/', status_code=status.HTTP_303_SEE_OTHER)
     except Exception as e:
         print(e)
-        return "Fail"
+        return _("Fail")
     finally:
         db.close()
 
@@ -200,6 +201,6 @@ async def refresh_vkey(user: admin_user, body: bytes = Depends(get_body)):
         return RedirectResponse(url='/manageVkeys/', status_code=status.HTTP_303_SEE_OTHER)
     except Exception as e:
         print(e)
-        return "Fail"
+        return _("Fail")
     finally:
         db.close()
