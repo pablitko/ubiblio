@@ -54,6 +54,32 @@ class newUserForm:
         return False
 
 
+class changePasswordForm:
+    def __init__(self, request: Request):
+        self.request: Request = request
+        self.errors: List = []
+        self.current: Optional[str] = None
+        self.new: Optional[str] = None
+        self.confirm: Optional[str] = None
+
+    async def load_data(self):
+        form = await self.request.form()
+        self.current = form.get("current")
+        self.new = form.get("new")
+        self.confirm = form.get("confirm")
+
+    async def is_valid(self):
+        if not self.current:
+            self.errors.append(_("Please enter your current password"))
+        if not self.new or len(self.new) < 8:
+            self.errors.append(_("The new password must have at least 8 characters"))
+        elif self.new != self.confirm:
+            self.errors.append(_("The new passwords do not match"))
+        if not self.errors:
+            return True
+        return False
+
+
 class newVkeyForm:
     def __init__(self, request: Request):
         self.request: Request = request

@@ -10,6 +10,11 @@ PL = {
     "Please enter your username": "Podaj nazwę użytkownika",
     "A valid password is required": "Podaj prawidłowe hasło",
     "A valid password over 3 characters is required": "Hasło musi mieć więcej niż 3 znaki",
+    "Please enter your current password": "Podaj obecne hasło",
+    "The new password must have at least 8 characters": "Nowe hasło musi mieć co najmniej 8 znaków",
+    "The new passwords do not match": "Nowe hasła nie są takie same",
+    "The current password is incorrect": "Obecne hasło jest nieprawidłowe",
+    "Password changed.": "Hasło zostało zmienione.",
     "Something went wrong with your access link. Reload this page, or contact your library admin.":
         "Coś jest nie tak z linkiem dostępu. Odśwież stronę albo skontaktuj się z administratorem biblioteki.",
     "Validation keys require a URL to tie them to": "Klucz weryfikacyjny wymaga adresu URL",

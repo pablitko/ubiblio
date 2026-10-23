@@ -7,6 +7,7 @@ from ..database import SessionLocal
 from ..dependencies import (
     get_rate_limiter, templates, settings, console,
     login_for_access_token, LoginForm, newUserForm,
+    current_user, authenticate_user, changePasswordForm,
 )
 from ..vars import ADMIN_USERNAME, ADMIN_PASSWORD, CREATE_ADMIN_USER, CREATE_USER, USER_USERNAME, USER_PASSWORD
 from ..messages import _
@@ -45,6 +46,32 @@ def login_get(request: Request):
         "request": request,
     }
     return templates.TemplateResponse(request, "login.html", context)
+
+
+@router.get("/auth/password", response_class=HTMLResponse)
+def change_password_page(request: Request, user: current_user):
+    context = {"request": request, "user": user, "errors": [], "msg": None}
+    return templates.TemplateResponse(request, "changePassword.html", context)
+
+
+@router.post("/auth/password", dependencies=[get_rate_limiter(times=1, seconds=2)], response_class=HTMLResponse)
+async def change_password(request: Request, user: current_user):
+    form = changePasswordForm(request)
+    await form.load_data()
+    msg = None
+    if await form.is_valid():
+        #Users change only their own password, so the current one is checked first
+        if not authenticate_user(user.username, form.current):
+            form.errors.append(_("The current password is incorrect"))
+        else:
+            db = SessionLocal()
+            try:
+                crud.update_password(db, user.username, form.new)
+            finally:
+                db.close()
+            msg = _("Password changed.")
+    context = {"request": request, "user": user, "errors": form.errors, "msg": msg}
+    return templates.TemplateResponse(request, "changePassword.html", context)
 
 
 @router.get("/auth/create/{accessCode}", dependencies=[get_rate_limiter(times=1, seconds=10)], response_class=HTMLResponse)

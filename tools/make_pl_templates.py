@@ -101,6 +101,11 @@ T = {
     "Photo": "Zdjęcie", "Confidence": "Pewność", "saved": "zapisana", "possible duplicate:": "możliwy duplikat:",
     "Save selected": "Zapisz zaznaczone", "No books were read from the photos.": "Ze zdjęć nie odczytano żadnej książki.",
     "New photo import": "Nowy import ze zdjęć",
+    # Change password
+    "Change Password": "Zmień hasło", "Change password": "Zmień hasło", "Current password": "Obecne hasło",
+    "New password": "Nowe hasło", "Repeat the new password": "Powtórz nowe hasło",
+    "At least 8 characters. Other devices where you are logged in stay logged in until their session expires.":
+        "Co najmniej 8 znaków. Na innych urządzeniach, na których jesteś zalogowany, sesja trwa do jej wygaśnięcia.",
     # API tokens
     "API Tokens": "Tokeny API",
     "Tokens give scripts and AI assistants (through the MCP server) access to the JSON API at":

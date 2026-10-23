@@ -33,6 +33,14 @@ def create_user(db: Session, user: schemas.UserCreate):
         print(e)
         return False
         
+def update_password(db: Session, username: str, password: str):
+    user = get_user_by_username(db, username)
+    if user is None:
+        return False
+    user.passhash = crypto.hash(str(password))
+    db.commit()
+    return True
+
 def isAdmin(db: Session, username: str):
     try:
         user = db.query(models.User).filter(models.User.username == username).first()
